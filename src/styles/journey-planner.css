@@ -1,0 +1,569 @@
+/* Journey Planner Specific Styles */
+
+.journey-planner-main {
+    min-height: calc(100vh - 80px);
+    padding: 20px 0;
+    background: var(--bg-light);
+}
+
+.planner-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 20px;
+    min-height: 600px;
+}
+
+/* Search Panel */
+.search-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.search-card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+}
+
+.search-card h3 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+    font-size: 1.4rem;
+}
+
+.input-with-icon {
+    position: relative;
+}
+
+.input-with-icon i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+}
+
+.origin-icon {
+    color: var(--success-color);
+}
+
+.destination-icon {
+    color: var(--primary-color);
+}
+
+.input-with-icon .form-control {
+    padding-left: 45px;
+}
+
+.swap-btn-container {
+    display: flex;
+    justify-content: center;
+    margin: -10px 0;
+}
+
+.swap-btn {
+    background: var(--secondary-color);
+    color: var(--white);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+}
+
+.swap-btn:hover {
+    transform: rotate(180deg);
+    background: var(--primary-color);
+}
+
+/* Suggestions Dropdown */
+.suggestions-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--white);
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: var(--shadow);
+    display: none;
+}
+
+.suggestions-dropdown.active {
+    display: block;
+}
+
+.suggestion-item {
+    padding: 12px 15px;
+    cursor: pointer;
+    border-bottom: 1px solid #f0f0f0;
+    transition: background 0.2s;
+}
+
+.suggestion-item:hover {
+    background: var(--bg-light);
+}
+
+.suggestion-item:last-child {
+    border-bottom: none;
+}
+
+.suggestion-item i {
+    margin-right: 10px;
+    color: var(--text-light);
+}
+
+/* Selection Methods */
+.selection-methods {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 20px 0;
+}
+
+.method-btn {
+    padding: 10px;
+    background: var(--bg-light);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.method-btn:hover {
+    border-color: var(--primary-color);
+    background: var(--white);
+}
+
+.method-btn i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.btn-block {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Recent Searches */
+.recent-searches {
+    margin-top: 20px;
+}
+
+.recent-searches h4 {
+    font-size: 1rem;
+    color: var(--text-light);
+    margin-bottom: 10px;
+}
+
+.recent-item {
+    background: var(--bg-light);
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.recent-item:hover {
+    background: #e8f4ff;
+    transform: translateX(5px);
+}
+
+.recent-item-text {
+    flex: 1;
+}
+
+.recent-item-from {
+    font-size: 0.9rem;
+    color: var(--text-dark);
+}
+
+.recent-item-to {
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Filter Panel */
+.filter-panel {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+}
+
+.filter-panel h4 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+.filter-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--text-light);
+    color: var(--text-light);
+}
+
+.btn-outline:hover {
+    background: var(--text-light);
+    color: var(--white);
+}
+
+/* Results Panel */
+.results-panel {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.results-header {
+    padding: 20px;
+    border-bottom: 2px solid var(--bg-light);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.results-header h3 {
+    color: var(--text-dark);
+    font-size: 1.3rem;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 10px;
+}
+
+.toggle-btn {
+    padding: 8px 15px;
+    background: var(--bg-light);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.toggle-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.toggle-btn.active {
+    background: var(--primary-color);
+    color: var(--white);
+}
+
+/* List View */
+.list-view {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-light);
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 20px;
+    opacity: 0.5;
+}
+
+.empty-state h3 {
+    margin-bottom: 10px;
+}
+
+/* Route Card */
+.route-card {
+    background: var(--white);
+    border: 2px solid var(--bg-light);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 15px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.route-card:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--shadow);
+    transform: translateY(-2px);
+}
+
+.route-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.route-type {
+    display: inline-block;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.route-type.direct {
+    background: #e8f5e9;
+    color: var(--success-color);
+}
+
+.route-type.connecting {
+    background: #fff3e0;
+    color: var(--accent-color);
+}
+
+.route-duration {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.route-path {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin: 15px 0;
+}
+
+.route-point {
+    flex: 1;
+}
+
+.route-point-label {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    margin-bottom: 5px;
+}
+
+.route-point-name {
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.route-arrow {
+    color: var(--primary-color);
+    font-size: 1.5rem;
+}
+
+.route-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 15px;
+    border-top: 1px solid var(--bg-light);
+}
+
+.route-buses {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.bus-badge {
+    background: var(--secondary-color);
+    color: var(--white);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.route-fare {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--success-color);
+}
+
+/* Map View */
+.map-view {
+    flex: 1;
+    position: relative;
+}
+
+#map {
+    border-radius: 0 0 15px 15px;
+}
+
+/* Route Details Modal */
+.route-details-content {
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.route-details-header {
+    background: linear-gradient(135deg, var(--primary-color), #c62828);
+    color: var(--white);
+    padding: 25px;
+    border-radius: 15px 15px 0 0;
+    margin: -40px -40px 20px -40px;
+}
+
+.route-details-header h2 {
+    margin-bottom: 10px;
+}
+
+.route-segment {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 15px;
+}
+
+.segment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.segment-bus {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.segment-type {
+    background: var(--secondary-color);
+    color: var(--white);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+}
+
+.segment-stops {
+    margin-top: 15px;
+}
+
+.stop-item {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+    border-left: 3px solid var(--primary-color);
+    padding-left: 20px;
+    position: relative;
+}
+
+.stop-item::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    width: 10px;
+    height: 10px;
+    background: var(--primary-color);
+    border-radius: 50%;
+}
+
+.stop-item:first-child::before {
+    background: var(--success-color);
+}
+
+.stop-item:last-child::before {
+    background: var(--primary-color);
+}
+
+.stop-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.stop-time {
+    color: var(--text-light);
+    font-size: 0.9rem;
+}
+
+.close-btn {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(255,255,255,0.2);
+    color: var(--white);
+    border: none;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.3s ease;
+}
+
+.close-btn:hover {
+    background: var(--white);
+    color: var(--primary-color);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .planner-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .search-panel {
+        order: 1;
+    }
+
+    .results-panel {
+        order: 2;
+        min-height: 500px;
+    }
+}
+
+@media (max-width: 768px) {
+    .results-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+
+    .view-toggle {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .selection-methods {
+        grid-template-columns: 1fr;
+    }
+
+    .route-path {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .route-arrow {
+        transform: rotate(90deg);
+    }
+}

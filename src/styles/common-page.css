@@ -1,0 +1,499 @@
+/* Common Page Styles */
+
+.page-main {
+    min-height: calc(100vh - 80px);
+    padding: 20px 0;
+    background: var(--bg-light);
+}
+
+.page-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    min-height: 600px;
+}
+
+.side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.panel-card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 25px;
+    box-shadow: var(--shadow);
+}
+
+.panel-card h3 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+}
+
+.content-panel {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    padding: 25px;
+    overflow: hidden;
+}
+
+.results-area {
+    min-height: 500px;
+}
+
+/* Tab Buttons */
+.tab-buttons {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.tab-btn {
+    padding: 12px;
+    background: var(--bg-light);
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    font-size: 0.95rem;
+}
+
+.tab-btn:hover {
+    border-color: var(--primary-color);
+}
+
+.tab-btn.active {
+    background: var(--primary-color);
+    color: var(--white);
+    border-color: var(--primary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Timetable Styles */
+.timetable-header {
+    background: linear-gradient(135deg, var(--primary-color), #c62828);
+    color: var(--white);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+
+.timetable-header h3 {
+    margin-bottom: 10px;
+}
+
+.timetable-table {
+    overflow-x: auto;
+}
+
+.timetable-table table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.timetable-table th,
+.timetable-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--bg-light);
+}
+
+.timetable-table th {
+    background: var(--bg-light);
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.timetable-table tr:hover {
+    background: #f9f9f9;
+}
+
+.route-badge {
+    background: var(--primary-color);
+    color: var(--white);
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.service-badge {
+    background: var(--secondary-color);
+    color: var(--white);
+    padding: 4px 10px;
+    border-radius: 15px;
+    font-size: 0.85rem;
+}
+
+/* Fare Calculator Styles */
+.fare-calculator-layout {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    gap: 20px;
+}
+
+.fare-input-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.fare-results-panel {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    padding: 25px;
+}
+
+.info-box {
+    background: #e3f2fd;
+    border-left: 4px solid var(--secondary-color);
+    padding: 15px;
+    border-radius: 8px;
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+}
+
+.info-box i {
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+}
+
+.fare-header {
+    background: linear-gradient(135deg, var(--secondary-color), #1565c0);
+    color: var(--white);
+    padding: 25px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+
+.fare-header h3 {
+    margin-bottom: 10px;
+}
+
+.fare-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.fare-option-card {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: var(--shadow);
+    transition: all 0.3s ease;
+}
+
+.fare-option-card:hover {
+    transform: translateY(-5px);
+    box-shadow: var(--shadow-hover);
+}
+
+.fare-card-header {
+    padding: 20px;
+    text-align: center;
+    color: var(--white);
+}
+
+.fare-card-header i {
+    font-size: 2.5rem;
+    margin-bottom: 10px;
+}
+
+.fare-card-header h4 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.fare-card-body {
+    padding: 20px;
+    background: var(--white);
+}
+
+.fare-amount {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.currency {
+    font-size: 1.5rem;
+    color: var(--text-light);
+}
+
+.amount {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--primary-color);
+}
+
+.fare-details {
+    background: var(--bg-light);
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+.fare-detail-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    font-size: 0.9rem;
+}
+
+.fare-features {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.9rem;
+}
+
+.feature-item i {
+    color: var(--success-color);
+}
+
+.concession-info {
+    background: var(--bg-light);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.concession-info h4 {
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.concession-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.concession-item {
+    background: var(--white);
+    padding: 15px;
+    border-radius: 8px;
+    display: flex;
+    gap: 12px;
+}
+
+.concession-item i {
+    font-size: 2rem;
+    color: var(--primary-color);
+}
+
+.concession-item strong {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.concession-item p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-light);
+}
+
+/* Around Station Styles */
+.around-station-layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 20px;
+    min-height: 600px;
+}
+
+.map-panel-full {
+    background: var(--white);
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 600px;
+}
+
+.map-info-overlay {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    background: rgba(255,255,255,0.95);
+    padding: 40px;
+    border-radius: 15px;
+    box-shadow: var(--shadow);
+    pointer-events: none;
+}
+
+.map-info-overlay i {
+    font-size: 3rem;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.amenity-selector {
+    margin-top: 25px;
+}
+
+.amenity-selector h4 {
+    margin-bottom: 15px;
+    color: var(--text-dark);
+    font-size: 1rem;
+}
+
+.amenity-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.amenity-btn {
+    padding: 15px;
+    background: var(--bg-light);
+    border: 2px solid transparent;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.amenity-btn:hover {
+    border-color: var(--primary-color);
+    background: var(--white);
+}
+
+.amenity-btn i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+.places-list-card {
+    background: var(--white);
+    border-radius: 15px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.places-list-card h4 {
+    margin-bottom: 15px;
+    color: var(--text-dark);
+}
+
+.places-count {
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin-bottom: 15px;
+}
+
+.place-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--bg-light);
+    border-radius: 8px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.place-item:hover {
+    background: #e8f4ff;
+    transform: translateX(5px);
+}
+
+.place-icon {
+    width: 40px;
+    height: 40px;
+    background: var(--primary-color);
+    color: var(--white);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.place-info {
+    flex: 1;
+}
+
+.place-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 5px;
+}
+
+.place-details {
+    font-size: 0.85rem;
+    color: var(--text-light);
+    display: flex;
+    gap: 15px;
+}
+
+.place-details i {
+    margin-right: 5px;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .page-layout,
+    .fare-calculator-layout,
+    .around-station-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .fare-options-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #map {
+        height: 400px;
+    }
+}
+
+@media (max-width: 768px) {
+    .tab-buttons {
+        grid-template-columns: 1fr;
+    }
+
+    .concession-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .timetable-table {
+        font-size: 0.85rem;
+    }
+
+    .timetable-table th,
+    .timetable-table td {
+        padding: 8px;
+    }
+}
