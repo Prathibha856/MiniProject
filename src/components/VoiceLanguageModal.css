@@ -1,0 +1,226 @@
+/* Voice Language Selection Modal */
+
+.voice-language-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.voice-language-modal {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 0;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.4s ease;
+  color: white;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  text-align: center;
+  padding: 40px 30px 30px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-header .voice-icon {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.modal-header h2 {
+  margin: 0 0 10px 0;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.modal-header p {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 1rem;
+}
+
+.language-options {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.language-option {
+  background: rgba(255, 255, 255, 0.15);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 15px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+}
+
+.language-option:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateX(5px);
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+}
+
+.language-option:active {
+  transform: translateX(2px) scale(0.98);
+}
+
+.language-flag {
+  font-size: 2.5rem;
+  line-height: 1;
+  min-width: 50px;
+  text-align: center;
+}
+
+.language-info {
+  flex: 1;
+  text-align: left;
+}
+
+.language-info h3 {
+  margin: 0 0 5px 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+}
+
+.language-info p {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.language-option i.fa-chevron-right {
+  font-size: 1.2rem;
+  opacity: 0.7;
+  transition: all 0.3s ease;
+}
+
+.language-option:hover i.fa-chevron-right {
+  opacity: 1;
+  transform: translateX(5px);
+}
+
+.modal-footer {
+  padding: 20px 30px 30px;
+  text-align: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.info-text {
+  margin: 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.info-text i {
+  font-size: 1rem;
+}
+
+/* Responsive Design */
+@media (max-width: 600px) {
+  .voice-language-modal {
+    width: 95%;
+    max-width: none;
+  }
+
+  .modal-header {
+    padding: 30px 20px 20px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .language-options {
+    padding: 15px;
+    gap: 12px;
+  }
+
+  .language-option {
+    padding: 15px;
+    gap: 15px;
+  }
+
+  .language-flag {
+    font-size: 2rem;
+    min-width: 40px;
+  }
+
+  .language-info h3 {
+    font-size: 1.1rem;
+  }
+
+  .language-info p {
+    font-size: 0.85rem;
+  }
+}
+
+/* Accessibility */
+.language-option:focus {
+  outline: 3px solid white;
+  outline-offset: 3px;
+}
+
+.language-option:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Dark mode friendly */
+@media (prefers-color-scheme: dark) {
+  .voice-language-modal-overlay {
+    background: rgba(0, 0, 0, 0.85);
+  }
+}

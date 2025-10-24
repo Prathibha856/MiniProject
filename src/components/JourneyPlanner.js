@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { getAllStopNames, getStopCoordinates, searchStops } from '../data/busStops';
 import '../styles/journey-planner.css';
 
 const JourneyPlanner = () => {
@@ -28,12 +29,14 @@ const JourneyPlanner = () => {
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
 
-  // Sample stations data
-  const stations = [
-    'Majestic', 'Shivaji Nagar', 'Indiranagar', 'Koramangala', 'Whitefield',
-    'Electronic City', 'Banashankari', 'Jayanagar', 'Yeshwanthpur', 'KR Puram',
-    'Hebbal', 'BTM Layout', 'HSR Layout', 'Marathahalli', 'Silk Board'
-  ];
+  // Real BMTC bus stops data
+  const [stations, setStations] = useState([]);
+  
+  // Load bus stops on component mount
+  useEffect(() => {
+    const stopNames = getAllStopNames();
+    setStations(stopNames);
+  }, []);
 
   // Sample routes data (will be replaced with API call)
   const sampleRoutes = [
@@ -71,29 +74,49 @@ const JourneyPlanner = () => {
     // Load recent searches
     const saved = JSON.parse(localStorage.getItem('bmtc_recent_journeys') || '[]');
     setRecentSearches(saved);
-
-    // Initialize map
-    if (window.google && mapRef.current && !mapInstance.current) {
-      initMap();
-    }
   }, []);
+
+  useEffect(() => {
+    // Initialize map when switching to map view
+    if (viewType === 'map' && window.google && mapRef.current && !mapInstance.current) {
+      setTimeout(() => {
+        initMap();
+      }, 100);
+    }
+  }, [viewType]);
+
+  useEffect(() => {
+    // Update map when routes change and map view is active
+    if (viewType === 'map' && mapInstance.current && routes.length > 0) {
+      setTimeout(() => {
+        displayAllRoutesOnMap();
+      }, 200);
+    }
+  }, [routes, viewType]);
 
   const initMap = () => {
     if (!mapRef.current || !window.google) return;
+    
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
       zoom: 12,
-      center: { lat: 12.9716, lng: 77.5946 }
+      center: { lat: 12.9716, lng: 77.5946 },
+      mapTypeControl: true,
+      streetViewControl: false,
+      fullscreenControl: true
     });
+
+    // Display routes if available
+    if (routes.length > 0) {
+      displayAllRoutesOnMap();
+    }
   };
 
   const handleOriginChange = (value) => {
     setOrigin(value);
-    if (value.length > 0) {
-      const filtered = stations.filter(s => 
-        s.toLowerCase().includes(value.toLowerCase())
-      );
-      setOriginSuggestions(filtered);
-      setShowOriginSuggestions(true);
+    if (value.length >= 2) {
+      const suggestions = searchStops(value);
+      setOriginSuggestions(suggestions.slice(0, 8));
+      setShowOriginSuggestions(suggestions.length > 0);
     } else {
       setShowOriginSuggestions(false);
     }
@@ -101,12 +124,10 @@ const JourneyPlanner = () => {
 
   const handleDestChange = (value) => {
     setDestination(value);
-    if (value.length > 0) {
-      const filtered = stations.filter(s => 
-        s.toLowerCase().includes(value.toLowerCase())
-      );
-      setDestSuggestions(filtered);
-      setShowDestSuggestions(true);
+    if (value.length >= 2) {
+      const suggestions = searchStops(value);
+      setDestSuggestions(suggestions.slice(0, 8));
+      setShowDestSuggestions(suggestions.length > 0);
     } else {
       setShowDestSuggestions(false);
     }
@@ -187,10 +208,70 @@ const JourneyPlanner = () => {
     }
   };
 
+  const displayAllRoutesOnMap = () => {
+    if (!mapInstance.current || !window.google) return;
+    
+    // Get real coordinates from BMTC data
+    const originCoords = getStopCoordinates(origin) || { lat: 12.9716, lng: 77.5946 };
+    const destCoords = getStopCoordinates(destination) || { lat: 12.9716, lng: 77.5946 };
+    
+    // Return if coordinates are the same (invalid search)
+    if (originCoords.lat === destCoords.lat && originCoords.lng === destCoords.lng) {
+      console.log('Unable to find valid coordinates for selected stops');
+      return;
+    }
+
+    // Add markers
+    new window.google.maps.Marker({
+      position: originCoords,
+      map: mapInstance.current,
+      label: 'A',
+      title: origin,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#4caf50',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2
+      }
+    });
+
+    new window.google.maps.Marker({
+      position: destCoords,
+      map: mapInstance.current,
+      label: 'B',
+      title: destination,
+      icon: {
+        path: window.google.maps.SymbolPath.CIRCLE,
+        scale: 10,
+        fillColor: '#d32f2f',
+        fillOpacity: 1,
+        strokeColor: '#fff',
+        strokeWeight: 2
+      }
+    });
+
+    // Draw route line
+    const routePath = new window.google.maps.Polyline({
+      path: [originCoords, destCoords],
+      geodesic: true,
+      strokeColor: '#2196f3',
+      strokeOpacity: 0.8,
+      strokeWeight: 4,
+      map: mapInstance.current
+    });
+
+    // Fit bounds to show both markers
+    const bounds = new window.google.maps.LatLngBounds();
+    bounds.extend(originCoords);
+    bounds.extend(destCoords);
+    mapInstance.current.fitBounds(bounds);
+  };
+
   const displayRouteOnMap = (route) => {
     if (!mapInstance.current || !window.google) return;
-    // In real implementation, plot route on map
-    console.log('Displaying route on map:', route);
+    displayAllRoutesOnMap();
   };
 
   const applyFilters = () => {
@@ -233,7 +314,7 @@ const JourneyPlanner = () => {
       <header className="page-header">
         <div className="page-header-container">
           <div className="page-header-left">
-            <img src="/assets/bmtc-logo.png" alt="BMTC" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
+            <img src="/assets/bmtc-logo.png" alt="BusFlow" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
             <h2>{text.title}</h2>
           </div>
           <div className="page-header-right">
@@ -475,7 +556,15 @@ const JourneyPlanner = () => {
                 </div>
               ) : (
                 <div className="map-view">
-                  <div ref={mapRef} id="map" style={{width:'100%',height:'500px'}}></div>
+                  {routes.length === 0 ? (
+                    <div className="empty-state">
+                      <i className="fas fa-map-marked-alt"></i>
+                      <h3>No Routes to Display</h3>
+                      <p>Search for routes to view them on the map</p>
+                    </div>
+                  ) : (
+                    <div ref={mapRef} id="map" style={{width:'100%',height:'500px',borderRadius:'12px'}}></div>
+                  )}
                 </div>
               )}
             </div>

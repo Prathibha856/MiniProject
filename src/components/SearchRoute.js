@@ -440,7 +440,7 @@ const SearchRoute = () => {
           <div className="page-header-left">
             <img 
               src="/assets/bmtc-logo.png" 
-              alt="BMTC" 
+              alt="BusFlow" 
               className="header-logo" 
               onClick={() => navigate('/')} 
               onError={e => e.target.style.display='none'} 

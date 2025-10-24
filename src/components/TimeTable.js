@@ -220,7 +220,7 @@ const TimeTable = () => {
       <header className="page-header">
         <div className="page-header-container">
           <div className="page-header-left">
-            <img src="/assets/bmtc-logo.png" alt="BMTC" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
+            <img src="/assets/bmtc-logo.png" alt="BusFlow" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
             <h2>{text.title}</h2>
           </div>
           <div className="page-header-right">

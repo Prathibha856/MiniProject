@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useVoice } from '../context/VoiceContext';
 import '../styles/main.css';
 
 const Home = () => {
   const navigate = useNavigate();
   const { language, changeLanguage } = useApp();
+  const { voiceEnabled, toggleVoice, voiceSupport } = useVoice();
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
@@ -15,9 +17,10 @@ const Home = () => {
 
   const t = {
     en: {
-      title: 'BMTC', tagline: 'Bangalore Metropolitan Transport Corporation',
-      welcome: 'Welcome to BMTC Smart Transit', subtitle: 'Your Complete Bus Journey Solution',
+      title: 'BusFlow', tagline: 'Your Complete Bus Journey Solution',
+      welcome: 'Welcome to BusFlow', subtitle: 'Smart Transit for Everyone',
       services: 'Our Services', language: 'Language', helpline: 'Helpline',
+      voice: 'Voice', voiceOn: 'Voice On', voiceOff: 'Voice Off',
       journeyPlanner: 'Journey Planner', journeyPlannerDesc: 'Plan your trip with multiple route options',
       trackBus: 'Track a Bus', trackBusDesc: 'Real-time bus location tracking',
       crowdPrediction: 'Crowd Prediction', crowdPredictionDesc: 'AI-powered crowd level predictions',
@@ -25,27 +28,32 @@ const Home = () => {
       timeTable: 'Time Table', timeTableDesc: 'View bus schedules and timings',
       aroundStation: 'Around Bus Station', aroundStationDesc: 'Find nearby amenities',
       fareCalculator: 'Fare Calculator', fareCalculatorDesc: 'Calculate your journey fare',
+      aboutBus: 'About Bus', aboutBusDesc: 'Browse all available buses and routes',
       feedback: 'Feedback', feedbackDesc: 'Share your experience with us',
       userGuide: 'User Guide', userGuideDesc: 'Learn how to use the app',
     },
     kn: {
-      title: 'BMTC', tagline: 'ಬೆಂಗಳೂರು ಮಹಾನಗರ ಸಾರಿಗೆ ನಿಗಮ',
-      welcome: 'BMTC ಸ್ಮಾರ್ಟ್ ಟ್ರಾನ್ಸಿಟ್‌ಗೆ ಸ್ವಾಗತ', subtitle: 'ನಿಮ್ಮ ಸಂಪೂರ್ಣ ಬಸ್ ಪ್ರಯಾಣ ಪರಿಹಾರ',
+      title: 'BusFlow', tagline: 'ನಿಮ್ಮ ಸಂಪೂರ್ಣ ಬಸ್ ಪ್ರಯಾಣ ಪರಿಹಾರ',
+      welcome: 'BusFlow ಗೆ ಸ್ವಾಗತ', subtitle: 'ಎಲ್ಲರಿಗೂ ಸ್ಮಾರ್ಟ್ ಸಾರಿಗೆ',
       services: 'ನಮ್ಮ ಸೇವೆಗಳು', language: 'ಭಾಷೆ', helpline: 'ಹೆಲ್ಪ್‌ಲೈನ್',
+      voice: 'ಧ್ವನಿ', voiceOn: 'ಧ್ವನಿ ಆನ್', voiceOff: 'ಧ್ವನಿ ಆಫ್',
       journeyPlanner: 'ಪ್ರಯಾಣ ಯೋಜಕ', trackBus: 'ಬಸ್ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ',
       crowdPrediction: 'ಜನಸಂದಣಿ ಮುನ್ಸೂಚನೆ',
       searchRoute: 'ಮಾರ್ಗದಿಂದ ಹುಡುಕಿ', timeTable: 'ಸಮಯ ಕೋಷ್ಟಕ',
       aroundStation: 'ಬಸ್ ನಿಲ್ದಾಣದ ಸುತ್ತಲೂ', fareCalculator: 'ದರ ಕ್ಯಾಲ್ಕುಲೇಟರ್',
+      aboutBus: 'ಬಸ್ ಬಗ್ಗೆ',
       feedback: 'ಪ್ರತಿಕ್ರಿಯೆ', userGuide: 'ಬಳಕೆದಾರ ಮಾರ್ಗದರ್ಶಿ',
     },
     hi: {
-      title: 'BMTC', tagline: 'बैंगलोर मेट्रोपॉलिटन ट्रांसपोर्ट कॉर्पोरेशन',
-      welcome: 'BMTC स्मार्ट ट्रांजिट में आपका स्वागत है', subtitle: 'आपका संपूर्ण बस यात्रा समाधान',
+      title: 'BusFlow', tagline: 'आपका संपूर्ण बस यात्रा समाधान',
+      welcome: 'BusFlow में आपका स्वागत है', subtitle: 'सभी के लिए स्मार्ट ट्रांजिट',
       services: 'हमारी सेवाएं', language: 'भाषा', helpline: 'हेल्पलाइन',
+      voice: 'आवाज़', voiceOn: 'आवाज़ चालू', voiceOff: 'आवाज़ बंद',
       journeyPlanner: 'यात्रा योजनाकार', trackBus: 'बस ट्रैक करें',
       crowdPrediction: 'भीड़ पूर्वानुमान',
       searchRoute: 'मार्ग द्वारा खोजें', timeTable: 'समय सारणी',
       aroundStation: 'बस स्टेशन के आसपास', fareCalculator: 'किराया कैलकुलेटर',
+      aboutBus: 'बस के बारे में',
       feedback: 'फीडबैक', userGuide: 'उपयोगकर्ता गाइड',
     }
   };
@@ -60,6 +68,7 @@ const Home = () => {
     { route: '/timetable', icon: 'fa-clock', key: 'timeTable', color: '#9c27b0' },
     { route: '/around-station', icon: 'fa-map-marked-alt', key: 'aroundStation', color: '#f44336' },
     { route: '/fare-calculator', icon: 'fa-calculator', key: 'fareCalculator', color: '#00bcd4' },
+    { route: '/about-bus', icon: 'fa-info-circle', key: 'aboutBus', color: '#3f51b5' },
     { route: '/feedback', icon: 'fa-comment-dots', key: 'feedback', color: '#ff5722' },
     { route: '/user-guide', icon: 'fa-book-open', key: 'userGuide', color: '#607d8b' },
   ];
@@ -90,7 +99,7 @@ const Home = () => {
       <header className="main-header">
         <div className="header-container">
           <div className="logo-section">
-            <img src="/assets/bmtc-logo.png" alt="BMTC Logo" className="bmtc-logo" onError={e => e.target.style.display='none'} />
+            <img src="/assets/bmtc-logo.png" alt="BusFlow Logo" className="bmtc-logo" onError={e => e.target.style.display='none'} />
             <div className="logo-text">
               <h1>{text.title}</h1>
               <p>{text.tagline}</p>
@@ -101,6 +110,16 @@ const Home = () => {
               <i className="fas fa-language"></i>
               <span>{text.language}</span>
             </button>
+            {voiceSupport.tts && voiceSupport.stt && (
+              <button 
+                className={`header-btn ${voiceEnabled ? 'voice-active' : ''}`}
+                onClick={toggleVoice}
+                title={voiceEnabled ? text.voiceOn : text.voiceOff}
+              >
+                <i className={`fas ${voiceEnabled ? 'fa-microphone' : 'fa-microphone-slash'}`}></i>
+                <span>{voiceEnabled ? text.voiceOn : text.voiceOff}</span>
+              </button>
+            )}
             <button className="header-btn" onClick={() => navigate('/helpline')}>
               <i className="fas fa-phone"></i>
               <span>{text.helpline}</span>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ML API Integration Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        h1::before {
+            content: '🔌';
+            font-size: 2rem;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .test-section {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
+        }
+        .test-section h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .result {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        .result pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-left: 10px;
+        }
+        .status.success {
+            background: #4caf50;
+            color: white;
+        }
+        .status.error {
+            background: #f44336;
+            color: white;
+        }
+        .status.pending {
+            background: #ff9800;
+            color: white;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+        }
+        .stat-card .value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+        .stat-card .label {
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ML API Integration Test</h1>
+        <p class="subtitle">Test your ML backend integration before running the React app</p>
+
+        <!-- Test 1: Health Check -->
+        <div class="test-section">
+            <h3>
+                Test 1: Health Check
+                <span id="health-status" class="status pending">Pending</span>
+            </h3>
+            <p style="color: #666; margin-bottom: 15px;">Verify the ML API is running and responding</p>
+            <button onclick="testHealth()">Run Health Check</button>
+            <div id="health-result" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Test 2: Single Prediction -->
+        <div class="test-section">
+            <h3>
+                Test 2: Single Prediction (Rush Hour)
+                <span id="predict-status" class="status pending">Pending</span>
+            </h3>
+            <p style="color: #666; margin-bottom: 15px;">Test crowd prediction for morning rush hour</p>
+            <button onclick="testPrediction()">Run Prediction Test</button>
+            <div id="predict-result" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Test 3: Batch Prediction -->
+        <div class="test-section">
+            <h3>
+                Test 3: Batch Predictions
+                <span id="batch-status" class="status pending">Pending</span>
+            </h3>
+            <p style="color: #666; margin-bottom: 15px;">Test predictions for multiple stops at once</p>
+            <button onclick="testBatch()">Run Batch Test</button>
+            <div id="batch-result" class="result" style="display:none;"></div>
+        </div>
+
+        <!-- Statistics -->
+        <div class="stats">
+            <div class="stat-card">
+                <div class="value" id="tests-passed">0</div>
+                <div class="label">Tests Passed</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="tests-failed">0</div>
+                <div class="label">Tests Failed</div>
+            </div>
+            <div class="stat-card">
+                <div class="value" id="response-time">-</div>
+                <div class="label">Avg Response (ms)</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #e8f5e9; border-radius: 10px; text-align: center;">
+            <h4 style="color: #2e7d32; margin-bottom: 10px;">✅ All tests pass? You're ready!</h4>
+            <p style="color: #666;">Run <code>npm start</code> in your React app to see ML predictions in action!</p>
+        </div>
+    </div>
+
+    <script>
+        const ML_API_URL = 'http://localhost:5000';
+        let testsPassed = 0;
+        let testsFailed = 0;
+        let responseTimes = [];
+
+        async function testHealth() {
+            const start = Date.now();
+            const statusEl = document.getElementById('health-status');
+            const resultEl = document.getElementById('health-result');
+            
+            statusEl.textContent = 'Running...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<pre>Calling ML API health endpoint...</pre>';
+
+            try {
+                const response = await fetch(`${ML_API_URL}/health`);
+                const data = await response.json();
+                const duration = Date.now() - start;
+                responseTimes.push(duration);
+
+                if (response.ok && data.status === 'healthy') {
+                    statusEl.textContent = 'Success';
+                    statusEl.className = 'status success';
+                    testsPassed++;
+                    resultEl.innerHTML = `<pre>${JSON.stringify(data, null, 2)}\n\n✓ Response time: ${duration}ms</pre>`;
+                } else {
+                    throw new Error('API returned unhealthy status');
+                }
+            } catch (error) {
+                statusEl.textContent = 'Failed';
+                statusEl.className = 'status error';
+                testsFailed++;
+                resultEl.innerHTML = `<pre style="color: red;">Error: ${error.message}\n\n❌ Is the ML API running?\nRun: python ml/predict_api.py</pre>`;
+            }
+            updateStats();
+        }
+
+        async function testPrediction() {
+            const start = Date.now();
+            const statusEl = document.getElementById('predict-status');
+            const resultEl = document.getElementById('predict-result');
+            
+            statusEl.textContent = 'Running...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<pre>Requesting crowd prediction...</pre>';
+
+            try {
+                const payload = {
+                    stop_lat: 12.9716,
+                    stop_lon: 77.5946,
+                    time: "08:30",
+                    day_of_week: 1
+                };
+
+                const response = await fetch(`${ML_API_URL}/predict`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                const duration = Date.now() - start;
+                responseTimes.push(duration);
+
+                if (response.ok && data.prediction) {
+                    statusEl.textContent = 'Success';
+                    statusEl.className = 'status success';
+                    testsPassed++;
+                    resultEl.innerHTML = `<pre>Request:\n${JSON.stringify(payload, null, 2)}\n\nResponse:\n${JSON.stringify(data, null, 2)}\n\n✓ Prediction: ${data.prediction.crowd_level}\n✓ Response time: ${duration}ms</pre>`;
+                } else {
+                    throw new Error('Invalid prediction response');
+                }
+            } catch (error) {
+                statusEl.textContent = 'Failed';
+                statusEl.className = 'status error';
+                testsFailed++;
+                resultEl.innerHTML = `<pre style="color: red;">Error: ${error.message}</pre>`;
+            }
+            updateStats();
+        }
+
+        async function testBatch() {
+            const start = Date.now();
+            const statusEl = document.getElementById('batch-status');
+            const resultEl = document.getElementById('batch-result');
+            
+            statusEl.textContent = 'Running...';
+            statusEl.className = 'status pending';
+            resultEl.style.display = 'block';
+            resultEl.innerHTML = '<pre>Requesting batch predictions...</pre>';
+
+            try {
+                const payload = {
+                    requests: [
+                        { stop_lat: 12.9716, stop_lon: 77.5946, time: "08:00", day_of_week: 1 },
+                        { stop_lat: 13.0827, stop_lon: 77.5877, time: "14:00", day_of_week: 6 },
+                        { stop_lat: 12.9698, stop_lon: 77.7499, time: "18:30", day_of_week: 3 }
+                    ]
+                };
+
+                const response = await fetch(`${ML_API_URL}/predict/batch`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                const data = await response.json();
+                const duration = Date.now() - start;
+                responseTimes.push(duration);
+
+                if (response.ok && data.predictions) {
+                    statusEl.textContent = 'Success';
+                    statusEl.className = 'status success';
+                    testsPassed++;
+                    
+                    const summary = data.predictions.map((p, i) => 
+                        `  ${i+1}. ${p.time} - ${p.crowd_level}`
+                    ).join('\n');
+                    
+                    resultEl.innerHTML = `<pre>Batch Results:\n${summary}\n\n✓ Predicted ${data.predictions.length} stops\n✓ Response time: ${duration}ms</pre>`;
+                } else {
+                    throw new Error('Invalid batch response');
+                }
+            } catch (error) {
+                statusEl.textContent = 'Failed';
+                statusEl.className = 'status error';
+                testsFailed++;
+                resultEl.innerHTML = `<pre style="color: red;">Error: ${error.message}</pre>`;
+            }
+            updateStats();
+        }
+
+        function updateStats() {
+            document.getElementById('tests-passed').textContent = testsPassed;
+            document.getElementById('tests-failed').textContent = testsFailed;
+            
+            if (responseTimes.length > 0) {
+                const avg = Math.round(responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length);
+                document.getElementById('response-time').textContent = avg;
+            }
+        }
+
+        // Auto-run health check on load
+        setTimeout(testHealth, 500);
+    </script>
+</body>
+</html>

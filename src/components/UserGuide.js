@@ -15,7 +15,7 @@ const UserGuide = () => {
       title: 'Getting Started',
       icon: 'fa-rocket',
       content: [
-        { subtitle: 'Welcome to BMTC Smart Transit', text: 'Your complete bus journey solution for Bangalore city. This app helps you plan journeys, track buses in real-time, and get route information.' },
+        { subtitle: 'Welcome to BusFlow', text: 'Your complete bus journey solution for Bangalore city. This app helps you plan journeys, track buses in real-time, and get route information.' },
         { subtitle: 'System Requirements', text: 'Internet connection required. Works on all modern browsers (Chrome, Firefox, Safari, Edge). Mobile-responsive design for smartphones and tablets.' },
         { subtitle: 'Language Support', text: 'Available in English, Kannada (ಕನ್ನಡ), and Hindi (हिंदी). Change language anytime from the home screen.' }
       ]
@@ -137,7 +137,7 @@ const UserGuide = () => {
       <header className="page-header">
         <div className="page-header-container">
           <div className="page-header-left">
-            <img src="/assets/bmtc-logo.png" alt="BMTC" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
+            <img src="/assets/bmtc-logo.png" alt="BusFlow" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
             <h2>User Guide & Help</h2>
           </div>
           <div className="page-header-right">

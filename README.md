@@ -1,6 +1,6 @@
-# BusFlow - Real-time Bus Tracking App
+# BusFlow - Smart Transit Solution
 
-A modern React Native mobile application for real-time bus tracking and crowd management.
+A modern React web application for real-time bus tracking, journey planning, and crowd management for BMTC Bangalore.
 
 ## Features
 

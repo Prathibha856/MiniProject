@@ -25,6 +25,12 @@ body {
     line-height: 1.6;
 }
 
+.app-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .container {
     max-width: 1200px;
     margin: 0 auto;
@@ -100,6 +106,28 @@ body {
 
 .header-btn i {
     font-size: 1.2rem;
+}
+
+/* Voice Assistant Active State */
+.header-btn.voice-active {
+    background-color: rgba(76, 175, 80, 0.3);
+    border-color: #4caf50;
+    animation: voicePulse 2s infinite;
+}
+
+.header-btn.voice-active:hover {
+    background-color: #4caf50;
+    color: var(--white);
+    border-color: #4caf50;
+}
+
+@keyframes voicePulse {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 10px rgba(76, 175, 80, 0);
+    }
 }
 
 /* Hero Section */

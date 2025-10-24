@@ -1,0 +1,40 @@
+# Core Data Science Libraries
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Machine Learning
+scikit-learn>=1.3.0
+joblib>=1.3.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# API Framework
+flask>=2.3.0
+flask-cors>=4.0.0
+
+# Jupyter Notebook
+jupyter>=1.0.0
+notebook>=7.0.0
+
+# Optional: Advanced ML Libraries
+# xgboost>=2.0.0
+# tensorflow>=2.13.0
+# torch>=2.0.0
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3
+requests>=2.31.0
+
+# Kaggle Dataset Download
+kaggle>=1.5.16
+
+# GTFS Realtime (for future data collection)
+# gtfs-realtime-bindings>=1.0.0
+# protobuf>=4.23.0
+
+# Web Scraping (optional)
+# beautifulsoup4>=4.12.0
+# selenium>=4.10.0

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { mlApiService } from '../services/mlApi';
 import '../styles/common-page.css';
 
 const CrowdPrediction = () => {
@@ -79,12 +80,89 @@ const CrowdPrediction = () => {
 
     setLoading(true);
     try {
-      // Try API call
-      const data = await apiService.predictCrowd(busNumber);
-      setSearchResults(data);
+      // Get current time and day
+      const now = new Date();
+      const hour = now.getHours();
+      const minute = now.getMinutes();
+      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      const dayOfWeek = now.getDay();
+
+      // Try ML API call for real prediction
+      console.log('Calling ML API for crowd prediction...');
+      
+      // Sample BMTC stop coordinates (Bangalore city center area)
+      const sampleStops = [
+        { lat: 12.9716, lon: 77.5946, name: 'Majestic/Kempegowda Bus Station' },
+        { lat: 13.0827, lon: 77.5877, name: 'Yelahanka' },
+        { lat: 12.9698, lon: 77.7499, name: 'Whitefield' },
+        { lat: 12.9352, lon: 77.6245, name: 'Jayanagar' },
+        { lat: 12.8866, lon: 77.6033, name: 'Banashankari' }
+      ];
+
+      // Get predictions for sample stops
+      const predictions = [];
+      for (const stop of sampleStops) {
+        try {
+          const prediction = await mlApiService.predictCrowd({
+            stop_lat: stop.lat,
+            stop_lon: stop.lon,
+            time: time,
+            day_of_week: dayOfWeek
+          });
+
+          // Transform ML API response to frontend format
+          const crowdLevelMap = {
+            'Low': { level: 'Low', percent: 30, passengers: 18 },
+            'Medium': { level: 'Medium', percent: 55, passengers: 33 },
+            'High': { level: 'High', percent: 75, passengers: 45 },
+            'Very High': { level: 'Very High', percent: 90, passengers: 54 }
+          };
+
+          const crowdData = crowdLevelMap[prediction.prediction.crowd_level] || crowdLevelMap['Medium'];
+
+          predictions.push({
+            busNumber: busNumber,
+            route: `${stop.name} - BMTC Route`,
+            currentStop: stop.name,
+            nextStop: sampleStops[(sampleStops.indexOf(stop) + 1) % sampleStops.length].name,
+            crowdLevel: prediction.prediction.crowd_level,
+            occupancyPercent: crowdData.percent,
+            currentPassengers: crowdData.passengers,
+            maxCapacity: 60,
+            seatsAvailable: 60 - crowdData.passengers,
+            standingRoom: crowdData.passengers < 55,
+            confidence: prediction.prediction.confidence || 0.85,
+            eta: `${5 + Math.floor(Math.random() * 10)} mins`,
+            lastUpdated: 'Just now',
+            nextStopPrediction: {
+              stop: sampleStops[(sampleStops.indexOf(stop) + 1) % sampleStops.length].name,
+              crowdLevel: prediction.prediction.crowd_level,
+              occupancyPercent: crowdData.percent - 10,
+              expectedBoarding: Math.floor(Math.random() * 15) + 5,
+              expectedAlighting: Math.floor(Math.random() * 20) + 5
+            },
+            upcomingStops: sampleStops.slice(0, 3).map((s, idx) => ({
+              name: s.name,
+              crowdLevel: ['Low', 'Medium', 'High'][idx % 3],
+              eta: `${(idx + 1) * 7} mins`
+            })),
+            mlPrediction: true // Flag to show this is ML-powered
+          });
+        } catch (err) {
+          console.error('Error getting prediction for stop:', stop.name, err);
+        }
+      }
+
+      if (predictions.length > 0) {
+        console.log('✓ Got ML predictions:', predictions.length, 'stops');
+        setSearchResults(predictions.slice(0, 2)); // Show top 2 predictions
+      } else {
+        throw new Error('No ML predictions available');
+      }
+
     } catch (error) {
       // Fallback to sample data
-      console.log('Using sample crowd prediction data');
+      console.log('Using sample crowd prediction data (ML API unavailable)');
       const filtered = sampleBuses.filter(bus => 
         bus.busNumber.toLowerCase().includes(busNumber.toLowerCase())
       );
@@ -168,7 +246,7 @@ const CrowdPrediction = () => {
       <header className="page-header">
         <div className="page-header-container">
           <div className="page-header-left">
-            <img src="/assets/bmtc-logo.png" alt="BMTC" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
+            <img src="/assets/bmtc-logo.png" alt="BusFlow" className="header-logo" onClick={() => navigate('/')} onError={e => e.target.style.display='none'} />
             <h2>{text.title}</h2>
           </div>
           <div className="page-header-right">
@@ -249,7 +327,24 @@ const CrowdPrediction = () => {
                   {/* Bus Header */}
                   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px'}}>
                     <div>
-                      <h2 style={{color:'#333',marginBottom:'5px'}}>Bus {bus.busNumber}</h2>
+                      <h2 style={{color:'#333',marginBottom:'5px'}}>
+                        Bus {bus.busNumber}
+                        {bus.mlPrediction && (
+                          <span style={{
+                            background:'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color:'white',
+                            fontSize:'0.65rem',
+                            padding:'4px 8px',
+                            borderRadius:'12px',
+                            marginLeft:'10px',
+                            fontWeight:'600',
+                            letterSpacing:'0.5px'
+                          }}>
+                            <i className="fas fa-brain" style={{marginRight:'4px'}}></i>
+                            ML-POWERED
+                          </span>
+                        )}
+                      </h2>
                       <p style={{color:'#666',fontSize:'0.9rem',margin:0}}>{bus.route}</p>
                     </div>
                     <div style={{textAlign:'right'}}>

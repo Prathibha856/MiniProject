@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Assistant Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .test-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        h2 {
+            font-size: 1.3rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status.success {
+            background: #4caf50;
+            box-shadow: 0 0 10px #4caf50;
+        }
+        
+        .status.error {
+            background: #f44336;
+            box-shadow: 0 0 10px #f44336;
+        }
+        
+        .status.pending {
+            background: #ff9800;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin: 5px;
+            display: inline-block;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: 4px solid white;
+            font-size: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 20px auto;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .mic-button:hover {
+            transform: scale(1.1);
+        }
+        
+        .mic-button.listening {
+            background: linear-gradient(135deg, #f093fb, #f5576c);
+            animation: listening-pulse 1s infinite;
+        }
+        
+        @keyframes listening-pulse {
+            0%, 100% {
+                box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7);
+            }
+            50% {
+                box-shadow: 0 0 0 20px rgba(245, 87, 108, 0);
+            }
+        }
+        
+        .info {
+            font-size: 0.9rem;
+            opacity: 0.9;
+            margin-top: 10px;
+        }
+        
+        .success-msg {
+            color: #4caf50;
+            font-weight: 600;
+        }
+        
+        .error-msg {
+            color: #f44336;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Voice Assistant Test</h1>
+        
+        <!-- Browser Support Check -->
+        <div class="test-section">
+            <h2>
+                <span class="status pending" id="support-status"></span>
+                Browser Support Check
+            </h2>
+            <div id="support-result" class="result">Checking...</div>
+        </div>
+        
+        <!-- Text-to-Speech Test -->
+        <div class="test-section">
+            <h2>
+                <span class="status pending" id="tts-status"></span>
+                Text-to-Speech (TTS) Test
+            </h2>
+            <div class="buttons">
+                <button onclick="testTTS('en')">Test English</button>
+                <button onclick="testTTS('kn')">Test Kannada</button>
+                <button onclick="testTTS('hi')">Test Hindi</button>
+            </div>
+            <div id="tts-result" class="result" style="display:none;"></div>
+        </div>
+        
+        <!-- Speech-to-Text Test -->
+        <div class="test-section">
+            <h2>
+                <span class="status pending" id="stt-status"></span>
+                Speech-to-Text (STT) Test
+            </h2>
+            <p class="info">Click the microphone and speak</p>
+            <button class="mic-button" id="mic-button" onclick="testSTT()">
+                🎤
+            </button>
+            <div class="buttons">
+                <button onclick="testSTT('en')">Listen English</button>
+                <button onclick="testSTT('kn')">Listen Kannada</button>
+                <button onclick="testSTT('hi')">Listen Hindi</button>
+            </div>
+            <div id="stt-result" class="result" style="display:none;"></div>
+        </div>
+        
+        <!-- Full Integration Test -->
+        <div class="test-section">
+            <h2>
+                <span class="status pending" id="integration-status"></span>
+                Full Integration Test
+            </h2>
+            <p class="info">Tests voice command → response flow</p>
+            <button onclick="testIntegration()">Run Full Test</button>
+            <div id="integration-result" class="result" style="display:none;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Check browser support
+        function checkSupport() {
+            const support = {
+                tts: 'speechSynthesis' in window,
+                stt: 'SpeechRecognition' in window || 'webkitSpeechRecognition' in window,
+                browser: navigator.userAgent
+            };
+            
+            const resultDiv = document.getElementById('support-result');
+            const statusDiv = document.getElementById('support-status');
+            
+            let result = `Browser: ${getBrowserName()}\n\n`;
+            result += `✅ Text-to-Speech (TTS): ${support.tts ? 'SUPPORTED' : 'NOT SUPPORTED'}\n`;
+            result += `${support.stt ? '✅' : '❌'} Speech-to-Text (STT): ${support.stt ? 'SUPPORTED' : 'NOT SUPPORTED'}\n\n`;
+            
+            if (support.tts && support.stt) {
+                result += '🎉 Your browser supports all voice features!';
+                statusDiv.className = 'status success';
+            } else {
+                result += '⚠️ Some features are not supported.\nPlease use Chrome or Edge browser.';
+                statusDiv.className = 'status error';
+            }
+            
+            resultDiv.textContent = result;
+            return support;
+        }
+        
+        function getBrowserName() {
+            const ua = navigator.userAgent;
+            if (ua.includes('Edg')) return 'Edge';
+            if (ua.includes('Chrome')) return 'Chrome';
+            if (ua.includes('Firefox')) return 'Firefox';
+            if (ua.includes('Safari')) return 'Safari';
+            return 'Unknown';
+        }
+        
+        // Test Text-to-Speech
+        function testTTS(lang = 'en') {
+            const statusDiv = document.getElementById('tts-status');
+            const resultDiv = document.getElementById('tts-result');
+            resultDiv.style.display = 'block';
+            
+            const langMap = {
+                en: { code: 'en-US', text: 'Voice assistant test successful in English' },
+                kn: { code: 'kn-IN', text: 'ಕನ್ನಡದಲ್ಲಿ ಧ್ವನಿ ಪರೀಕ್ಷೆ ಯಶಸ್ವಿಯಾಗಿದೆ' },
+                hi: { code: 'hi-IN', text: 'हिंदी में आवाज परीक्षण सफल रहा' }
+            };
+            
+            const selected = langMap[lang];
+            resultDiv.textContent = `Testing ${lang.toUpperCase()}...\nSpeaking: "${selected.text}"`;
+            
+            try {
+                const utterance = new SpeechSynthesisUtterance(selected.text);
+                utterance.lang = selected.code;
+                utterance.rate = 0.9;
+                
+                utterance.onstart = () => {
+                    statusDiv.className = 'status pending';
+                    resultDiv.textContent += '\n\n🔊 Speaking...';
+                };
+                
+                utterance.onend = () => {
+                    statusDiv.className = 'status success';
+                    resultDiv.textContent += '\n✅ TTS test successful!';
+                };
+                
+                utterance.onerror = (e) => {
+                    statusDiv.className = 'status error';
+                    resultDiv.textContent += `\n❌ Error: ${e.error}`;
+                };
+                
+                window.speechSynthesis.speak(utterance);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                resultDiv.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        // Test Speech-to-Text
+        let currentRecognition = null;
+        
+        function testSTT(lang = 'en') {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            
+            if (!SpeechRecognition) {
+                document.getElementById('stt-result').textContent = '❌ Speech recognition not supported in this browser.\nPlease use Chrome or Edge.';
+                document.getElementById('stt-result').style.display = 'block';
+                document.getElementById('stt-status').className = 'status error';
+                return;
+            }
+            
+            const statusDiv = document.getElementById('stt-status');
+            const resultDiv = document.getElementById('stt-result');
+            const micButton = document.getElementById('mic-button');
+            resultDiv.style.display = 'block';
+            
+            const langMap = {
+                en: 'en-US',
+                kn: 'kn-IN',
+                hi: 'hi-IN'
+            };
+            
+            // Stop previous recognition if any
+            if (currentRecognition) {
+                currentRecognition.stop();
+            }
+            
+            const recognition = new SpeechRecognition();
+            currentRecognition = recognition;
+            
+            recognition.lang = langMap[lang];
+            recognition.continuous = false;
+            recognition.interimResults = false;
+            
+            resultDiv.textContent = `🎤 Listening in ${lang.toUpperCase()}...\nSpeak now!`;
+            statusDiv.className = 'status pending';
+            micButton.classList.add('listening');
+            
+            recognition.onstart = () => {
+                resultDiv.textContent += '\n\n✅ Microphone activated';
+            };
+            
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                const confidence = event.results[0][0].confidence;
+                
+                resultDiv.textContent = `✅ Recognized (${lang.toUpperCase()}):\n\n`;
+                resultDiv.textContent += `"${transcript}"\n\n`;
+                resultDiv.textContent += `Confidence: ${(confidence * 100).toFixed(1)}%`;
+                statusDiv.className = 'status success';
+                micButton.classList.remove('listening');
+            };
+            
+            recognition.onerror = (event) => {
+                resultDiv.textContent = `❌ Error: ${event.error}\n\n`;
+                if (event.error === 'not-allowed') {
+                    resultDiv.textContent += 'Microphone permission denied.\n';
+                    resultDiv.textContent += 'Please allow microphone access and try again.';
+                } else if (event.error === 'no-speech') {
+                    resultDiv.textContent += 'No speech detected. Please try again.';
+                }
+                statusDiv.className = 'status error';
+                micButton.classList.remove('listening');
+            };
+            
+            recognition.onend = () => {
+                micButton.classList.remove('listening');
+                currentRecognition = null;
+            };
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                resultDiv.textContent = `❌ Error starting recognition: ${error.message}`;
+                statusDiv.className = 'status error';
+                micButton.classList.remove('listening');
+            }
+        }
+        
+        // Test full integration
+        function testIntegration() {
+            const statusDiv = document.getElementById('integration-status');
+            const resultDiv = document.getElementById('integration-result');
+            resultDiv.style.display = 'block';
+            statusDiv.className = 'status pending';
+            
+            resultDiv.textContent = '🧪 Running full integration test...\n\n';
+            
+            // Test 1: TTS
+            resultDiv.textContent += '1️⃣ Testing TTS...\n';
+            const utterance1 = new SpeechSynthesisUtterance('Starting voice assistant test');
+            utterance1.rate = 1.0;
+            
+            utterance1.onend = () => {
+                resultDiv.textContent += '✅ TTS working\n\n';
+                
+                // Test 2: STT
+                resultDiv.textContent += '2️⃣ Testing STT...\nPlease say "track bus"\n';
+                
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SpeechRecognition) {
+                    resultDiv.textContent += '❌ STT not supported\n';
+                    statusDiv.className = 'status error';
+                    return;
+                }
+                
+                const recognition = new SpeechRecognition();
+                recognition.lang = 'en-US';
+                
+                recognition.onresult = (event) => {
+                    const transcript = event.results[0][0].transcript.toLowerCase();
+                    resultDiv.textContent += `✅ STT working\nHeard: "${transcript}"\n\n`;
+                    
+                    // Test 3: Intent detection
+                    resultDiv.textContent += '3️⃣ Testing Intent Detection...\n';
+                    
+                    if (transcript.includes('track') || transcript.includes('bus')) {
+                        resultDiv.textContent += '✅ Intent detected: TRACK BUS\n\n';
+                        
+                        // Test 4: Response
+                        resultDiv.textContent += '4️⃣ Testing Response...\n';
+                        const utterance2 = new SpeechSynthesisUtterance('Opening bus tracking');
+                        utterance2.onend = () => {
+                            resultDiv.textContent += '✅ Response working\n\n';
+                            resultDiv.textContent += '🎉 ALL TESTS PASSED!\n';
+                            resultDiv.textContent += 'Voice assistant is fully functional!';
+                            statusDiv.className = 'status success';
+                        };
+                        window.speechSynthesis.speak(utterance2);
+                    } else {
+                        resultDiv.textContent += '⚠️ Command not recognized. Try saying "track bus"\n';
+                        statusDiv.className = 'status pending';
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    resultDiv.textContent += `❌ STT error: ${event.error}\n`;
+                    statusDiv.className = 'status error';
+                };
+                
+                recognition.start();
+            };
+            
+            window.speechSynthesis.speak(utterance1);
+        }
+        
+        // Run support check on load
+        window.addEventListener('load', () => {
+            checkSupport();
+        });
+    </script>
+</body>
+</html>
