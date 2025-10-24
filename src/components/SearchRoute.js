@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { apiService } from '../services/api';
+import { apiService, busService } from '../services/api';
 import '../styles/search-route.css';
 
 const SearchRoute = () => {
@@ -140,7 +140,7 @@ const SearchRoute = () => {
   const loadAllRoutes = async () => {
     try {
       setLoading(true);
-      const data = await apiService.getAllRoutes();
+      const data = await busService.getRoutes();
       setRoutes(data);
       setFilteredRoutes(data);
     } catch (error) {

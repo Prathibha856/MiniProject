@@ -1,6 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api';
+const SMART_BACKEND_URL = 'http://localhost:8080';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -29,6 +30,49 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+export const busService = {
+  // Smart Backend Routes API
+  getRoutes: async () => {
+    try {
+      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  },
+
+  getRoute: async (routeId) => {
+    try {
+      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes/${routeId}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  },
+
+  getStops: async () => {
+    try {
+      const response = await axios.get(`${SMART_BACKEND_URL}/api/stops`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  },
+
+  searchRoutes: async (query) => {
+    try {
+      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes/search?q=${query}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  }
+};
 
 export const apiService = {
   // Bus Tracking
