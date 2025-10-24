@@ -157,30 +157,58 @@ const JourneyPlanner = () => {
 
     setLoading(true);
     try {
-      // Try API call
-      const data = await apiService.searchRoutes(origin, destination, filters);
-      setRoutes(data);
-    } catch (error) {
-      // Fallback to sample data
-      console.log('Using sample route data');
-      const filteredRoutes = sampleRoutes.filter(route => {
-        if (filters.serviceType !== 'all' && route.serviceType !== filters.serviceType) {
-          return false;
+      const response = await apiService.planJourney(origin, destination, filters.departTime);
+      console.log('API Response:', response); // Debug log
+      
+      if (response && Array.isArray(response)) {
+        const formattedRoutes = response.map(route => ({
+          id: route.route.routeId,
+          type: 'direct',
+          buses: [route.route.routeShortName],
+          duration: `${route.metrics.estimatedTimeMinutes} mins`,
+          fare: '₹25', // TODO: Implement fare calculation
+          from: origin,
+          to: destination,
+          departTime: route.departureTime || '09:00 AM', // Default time if not provided
+          arriveTime: route.arrivalTime || '10:00 AM', // Default time if not provided
+          stops: route.stops.map(stop => stop.stopName),
+          serviceType: route.route.routeType === 3 ? 'Ordinary' : 'AC',
+          shapes: route.shapes || [],
+          stopCoordinates: route.stops.map(stop => ({
+            lat: parseFloat(stop.stopLat),
+            lng: parseFloat(stop.stopLon),
+            name: stop.stopName
+          }))
+        }));
+
+        console.log('Formatted Routes:', formattedRoutes); // Debug log
+
+        // Apply filters
+        let filteredRoutes = formattedRoutes;
+        if (filters.serviceType !== 'all') {
+          filteredRoutes = filteredRoutes.filter(route => route.serviceType === filters.serviceType);
         }
-        return true;
-      });
-      
-      // Sort routes
-      if (filters.sortBy === 'duration') {
-        filteredRoutes.sort((a, b) => a.duration.localeCompare(b.duration));
-      } else if (filters.sortBy === 'fare') {
-        filteredRoutes.sort((a, b) => parseInt(a.fare.replace('₹', '')) - parseInt(b.fare.replace('₹', '')));
+        
+        // Sort routes
+        if (filters.sortBy === 'duration') {
+          filteredRoutes.sort((a, b) => parseInt(a.duration) - parseInt(b.duration));
+        } else if (filters.sortBy === 'fare') {
+          filteredRoutes.sort((a, b) => parseInt(a.fare.replace('₹', '')) - parseInt(b.fare.replace('₹', '')));
+        }
+        
+        setRoutes(filteredRoutes);
+        
+        // If map view is active, update the map
+        if (viewType === 'map' && mapInstance.current) {
+          setTimeout(() => displayAllRoutesOnMap(), 500);
+        }
       }
-      
-      setRoutes(filteredRoutes);
       
       // Save to recent searches
       saveRecentSearch(origin, destination);
+    } catch (error) {
+      console.error('Error fetching routes:', error);
+      alert('Error finding routes. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -210,68 +238,203 @@ const JourneyPlanner = () => {
 
   const displayAllRoutesOnMap = () => {
     if (!mapInstance.current || !window.google) return;
+    console.log('Displaying routes on map:', routes); // Debug log
     
-    // Get real coordinates from BMTC data
-    const originCoords = getStopCoordinates(origin) || { lat: 12.9716, lng: 77.5946 };
-    const destCoords = getStopCoordinates(destination) || { lat: 12.9716, lng: 77.5946 };
-    
-    // Return if coordinates are the same (invalid search)
-    if (originCoords.lat === destCoords.lat && originCoords.lng === destCoords.lng) {
-      console.log('Unable to find valid coordinates for selected stops');
-      return;
+    // Clear existing markers and polylines
+    if (mapInstance.current.markers) {
+      mapInstance.current.markers.forEach(marker => marker.setMap(null));
     }
+    if (mapInstance.current.polylines) {
+      mapInstance.current.polylines.forEach(line => line.setMap(null));
+    }
+    mapInstance.current.markers = [];
+    mapInstance.current.polylines = [];
 
-    // Add markers
-    new window.google.maps.Marker({
-      position: originCoords,
-      map: mapInstance.current,
-      label: 'A',
-      title: origin,
-      icon: {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: '#4caf50',
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: 2
-      }
-    });
-
-    new window.google.maps.Marker({
-      position: destCoords,
-      map: mapInstance.current,
-      label: 'B',
-      title: destination,
-      icon: {
-        path: window.google.maps.SymbolPath.CIRCLE,
-        scale: 10,
-        fillColor: '#d32f2f',
-        fillOpacity: 1,
-        strokeColor: '#fff',
-        strokeWeight: 2
-      }
-    });
-
-    // Draw route line
-    const routePath = new window.google.maps.Polyline({
-      path: [originCoords, destCoords],
-      geodesic: true,
-      strokeColor: '#2196f3',
-      strokeOpacity: 0.8,
-      strokeWeight: 4,
-      map: mapInstance.current
-    });
-
-    // Fit bounds to show both markers
     const bounds = new window.google.maps.LatLngBounds();
-    bounds.extend(originCoords);
-    bounds.extend(destCoords);
-    mapInstance.current.fitBounds(bounds);
+    
+    routes.forEach((route, routeIndex) => {
+      console.log('Processing route:', route); // Debug log
+      
+      // Draw route shapes if available
+      if (route.shapes && route.shapes.length > 0) {
+        console.log('Drawing shapes for route:', route.id); // Debug log
+        const shapePath = route.shapes.map(point => ({
+          lat: parseFloat(point.shapePtLat),
+          lng: parseFloat(point.shapePtLon)
+        })).filter(point => !isNaN(point.lat) && !isNaN(point.lng));
+
+        if (shapePath.length > 0) {
+          const routeLine = new window.google.maps.Polyline({
+            path: shapePath,
+            geodesic: true,
+            strokeColor: routeIndex === 0 ? '#2196f3' : '#666',
+            strokeOpacity: routeIndex === 0 ? 1 : 0.6,
+            strokeWeight: routeIndex === 0 ? 4 : 3,
+            map: mapInstance.current
+          });
+          
+          mapInstance.current.polylines.push(routeLine);
+          
+          // Extend bounds with shape points
+          shapePath.forEach(point => bounds.extend(point));
+        }
+      } else {
+        console.log('No shapes available for route:', route.id); // Debug log
+      }
+
+      // Add stop markers
+      if (route.stopCoordinates && route.stopCoordinates.length > 0) {
+        console.log('Adding stop markers for route:', route.id); // Debug log
+        route.stopCoordinates.forEach((stop, idx) => {
+          if (!stop.lat || !stop.lng || isNaN(stop.lat) || isNaN(stop.lng)) {
+            console.log('Invalid stop coordinates:', stop);
+            return;
+          }
+
+          const isOrigin = idx === 0;
+          const isDestination = idx === route.stopCoordinates.length - 1;
+          
+          const marker = new window.google.maps.Marker({
+            position: { lat: stop.lat, lng: stop.lng },
+            map: mapInstance.current,
+            title: stop.name,
+            icon: {
+              path: window.google.maps.SymbolPath.CIRCLE,
+              scale: isOrigin || isDestination ? 10 : 6,
+              fillColor: isOrigin ? '#4caf50' : isDestination ? '#d32f2f' : '#666',
+              fillOpacity: 1,
+              strokeColor: '#fff',
+              strokeWeight: 2
+            },
+            label: isOrigin ? 'A' : isDestination ? 'B' : ''
+          });
+
+          // Add click listener to show stop info
+          const infoWindow = new window.google.maps.InfoWindow({
+            content: `
+              <div style="padding: 8px;">
+                <h4 style="margin: 0 0 8px 0;">${stop.name}</h4>
+                <div style="margin: 5px 0;">
+                  <strong>${isOrigin ? 'Origin Stop' : isDestination ? 'Destination Stop' : 'Via Stop'}</strong>
+                </div>
+                <div>
+                  <strong>Bus:</strong> ${route.buses ? route.buses.join(', ') : 'N/A'}
+                </div>
+                ${!isOrigin && !isDestination ? `
+                <div style="margin-top: 5px;">
+                  <strong>Expected Time:</strong> ${route.departTime || 'N/A'}
+                </div>` : ''}
+              </div>
+            `
+          });
+
+          marker.addListener('click', () => {
+            mapInstance.current.infoWindow?.close();
+            infoWindow.open(mapInstance.current, marker);
+            mapInstance.current.infoWindow = infoWindow;
+          });
+
+          mapInstance.current.markers.push(marker);
+          bounds.extend(stop);
+        });
+      } else {
+        console.log('No stop coordinates available for route:', route.id); // Debug log
+      }
+    });
+
+    // Fit map to show all markers and shapes
+    if (!bounds.isEmpty()) {
+      mapInstance.current.fitBounds(bounds);
+      // Add some padding to the bounds
+      mapInstance.current.setZoom(mapInstance.current.getZoom() - 1);
+    } else {
+      console.log('No valid bounds to fit map to'); // Debug log
+      // Center on Bangalore if no bounds
+      mapInstance.current.setCenter({ lat: 12.9716, lng: 77.5946 });
+      mapInstance.current.setZoom(12);
+    }
   };
 
   const displayRouteOnMap = (route) => {
     if (!mapInstance.current || !window.google) return;
-    displayAllRoutesOnMap();
+    
+    // Clear existing markers and polylines
+    mapInstance.current.markers?.forEach(marker => marker.setMap(null));
+    mapInstance.current.polylines?.forEach(line => line.setMap(null));
+    mapInstance.current.markers = [];
+    mapInstance.current.polylines = [];
+
+    const bounds = new window.google.maps.LatLngBounds();
+
+    // Draw route shape
+    if (route.shapes && route.shapes.length > 0) {
+      const shapePath = route.shapes.map(point => ({
+        lat: parseFloat(point.shapePtLat),
+        lng: parseFloat(point.shapePtLon)
+      }));
+
+      const routeLine = new window.google.maps.Polyline({
+        path: shapePath,
+        geodesic: true,
+        strokeColor: '#2196f3',
+        strokeOpacity: 1,
+        strokeWeight: 4,
+        map: mapInstance.current
+      });
+      
+      mapInstance.current.polylines.push(routeLine);
+      
+      // Extend bounds with shape points
+      shapePath.forEach(point => bounds.extend(point));
+    }
+
+    // Add stop markers
+    if (route.stopCoordinates) {
+      route.stopCoordinates.forEach((stop, idx) => {
+        const isOrigin = idx === 0;
+        const isDestination = idx === route.stopCoordinates.length - 1;
+        
+        const marker = new window.google.maps.Marker({
+          position: { lat: stop.lat, lng: stop.lng },
+          map: mapInstance.current,
+          title: stop.name,
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: isOrigin || isDestination ? 10 : 6,
+            fillColor: isOrigin ? '#4caf50' : isDestination ? '#d32f2f' : '#666',
+            fillOpacity: 1,
+            strokeColor: '#fff',
+            strokeWeight: 2
+          },
+          label: isOrigin ? 'A' : isDestination ? 'B' : ''
+        });
+
+        // Add click listener to show stop info
+        const infoWindow = new window.google.maps.InfoWindow({
+          content: `
+            <div style="padding: 8px;">
+              <h4 style="margin: 0 0 8px 0;">${stop.name}</h4>
+              ${isOrigin ? 'Origin Stop' : isDestination ? 'Destination Stop' : 'Via Stop'}
+              <br>
+              <strong>Bus:</strong> ${route.buses.join(', ')}
+              ${!isOrigin && !isDestination ? `<br><strong>Time:</strong> ${route.departTime}` : ''}
+            </div>
+          `
+        });
+
+        marker.addListener('click', () => {
+          mapInstance.current.infoWindow?.close();
+          infoWindow.open(mapInstance.current, marker);
+          mapInstance.current.infoWindow = infoWindow;
+        });
+
+        mapInstance.current.markers.push(marker);
+        bounds.extend(stop);
+      });
+    }
+
+    // Fit map to show all markers and shapes
+    mapInstance.current.fitBounds(bounds);
   };
 
   const applyFilters = () => {

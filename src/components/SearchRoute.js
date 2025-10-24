@@ -19,6 +19,7 @@ const SearchRoute = () => {
   const [showFilters, setShowFilters] = useState(false);
   const [serviceTypeFilter, setServiceTypeFilter] = useState('all');
   const [favorites, setFavorites] = useState([]);
+  const [stops, setStops] = useState([]); // Add this line
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
   const markers = useRef([]);
@@ -117,6 +118,8 @@ const SearchRoute = () => {
   useEffect(() => {
     loadAllRoutes();
     loadFavorites();
+    // Add stops data loading
+    loadStops();
     if (window.google && mapRef.current && !mapInstance.current) {
       initMap();
     }
@@ -149,6 +152,17 @@ const SearchRoute = () => {
       setFilteredRoutes(demoRoutes);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadStops = async () => {
+    try {
+      const stopsData = await busService.getStops();
+      console.log('Loaded stops:', stopsData); // This will show in browser console
+      setStops(stopsData);
+    } catch (error) {
+      console.error('Error loading stops:', error);
+      setStops([]); // Set empty array on error
     }
   };
 
@@ -465,16 +479,20 @@ const SearchRoute = () => {
             <div className="search-panel">
               <div className="search-card">
                 <h3>{text.search} {text.title}</h3>
-                <div className="form-group">
-                  <div className="input-with-icon">
-                    <i className="fas fa-route"></i>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder={text.searchPlaceholder}
-                      value={searchQuery}
-                      onChange={e => handleSearch(e.target.value)}
-                    />
+                              <div className="form-group">
+                {/* Add stops count display */}
+                <div style={{marginBottom: '10px', color: '#666'}}>
+                  Total Stops Loaded: {stops.length}
+                </div>
+                <div className="input-with-icon">
+                  <i className="fas fa-route"></i>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder={text.searchPlaceholder}
+                    value={searchQuery}
+                    onChange={e => handleSearch(e.target.value)}
+                  />
                     {searchQuery && (
                       <button className="clear-input-btn" onClick={clearSearch}>
                         <i className="fas fa-times"></i>

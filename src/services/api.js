@@ -97,6 +97,22 @@ export const apiService = {
   },
 
   // Journey Planning
+  planJourney: async (fromStop, toStop, time = null, date = null) => {
+    try {
+      const params = new URLSearchParams({
+        fromStop,
+        toStop,
+        ...(time && { time }),
+        ...(date && { date })
+      });
+      const response = await axios.get(`${SMART_BACKEND_URL}/api/journey/plan?${params}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  },
+
   searchRoutes: async (origin, destination, filters = {}) => {
     try {
       const response = await api.post('/routes/search', { origin, destination, ...filters });
