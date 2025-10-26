@@ -418,6 +418,16 @@
     border-radius: 0 0 15px 15px;
 }
 
+.map-container {
+  height: 500px;
+  margin-top: 20px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  position: relative;
+  z-index: 1;
+}
+
 /* Route Details Modal */
 .route-details-content {
     max-width: 800px;

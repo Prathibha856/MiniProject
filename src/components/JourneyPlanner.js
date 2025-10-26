@@ -16,7 +16,7 @@ const JourneyPlanner = () => {
   const [showDestSuggestions, setShowDestSuggestions] = useState(false);
   const [routes, setRoutes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [viewType, setViewType] = useState('list');
+  const [viewType, setViewType] = useState('map');
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [showRouteDetails, setShowRouteDetails] = useState(false);
   const [recentSearches, setRecentSearches] = useState([]);
@@ -28,6 +28,9 @@ const JourneyPlanner = () => {
   });
   const mapRef = useRef(null);
   const mapInstance = useRef(null);
+  const directionsService = useRef(null);
+  const directionsRenderer = useRef(null);
+  const trafficLayer = useRef(null);
 
   // Real BMTC bus stops data
   const [stations, setStations] = useState([]);
@@ -36,6 +39,16 @@ const JourneyPlanner = () => {
   useEffect(() => {
     const stopNames = getAllStopNames();
     setStations(stopNames);
+    
+    // Load Google Maps script if not already loaded
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_KEY}&libraries=places,directions`;
+      script.async = true;
+      script.defer = true;
+      script.onload = () => console.log('Google Maps API loaded');
+      document.head.appendChild(script);
+    }
   }, []);
 
   // Sample routes data (will be replaced with API call)
@@ -99,15 +112,38 @@ const JourneyPlanner = () => {
     
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
       zoom: 12,
-      center: { lat: 12.9716, lng: 77.5946 },
+      center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
       mapTypeControl: true,
       streetViewControl: false,
       fullscreenControl: true
     });
 
+    // Initialize directions service and renderer
+    directionsService.current = new window.google.maps.DirectionsService();
+    directionsRenderer.current = new window.google.maps.DirectionsRenderer({
+      map: mapInstance.current,
+      suppressMarkers: false,
+      markerOptions: {
+        zIndex: 100,
+        draggable: false
+      },
+      polylineOptions: {
+        strokeColor: '#2196f3',
+        strokeWeight: 5,
+        strokeOpacity: 0.8
+      }
+    });
+
+    // Add traffic layer
+    trafficLayer.current = new window.google.maps.TrafficLayer();
+    trafficLayer.current.setMap(mapInstance.current);
+
     // Display routes if available
     if (routes.length > 0) {
       displayAllRoutesOnMap();
+    } else if (origin && destination) {
+      // If origin and destination are set but no routes yet, show directions
+      calculateAndDisplayRoute();
     }
   };
 
@@ -136,17 +172,74 @@ const JourneyPlanner = () => {
   const selectOrigin = (station) => {
     setOrigin(station);
     setShowOriginSuggestions(false);
+    
+    // Update map if destination is already set
+    if (destination && viewType === 'map' && mapInstance.current) {
+      setTimeout(() => calculateAndDisplayRoute(), 300);
+    }
   };
 
   const selectDestination = (station) => {
     setDestination(station);
     setShowDestSuggestions(false);
+    
+    // Update map if origin is already set
+    if (origin && viewType === 'map' && mapInstance.current) {
+      setTimeout(() => calculateAndDisplayRoute(), 300);
+    }
   };
 
   const swapLocations = () => {
     const temp = origin;
     setOrigin(destination);
     setDestination(temp);
+    
+    // Update map if both fields are set
+    if (origin && destination && viewType === 'map' && mapInstance.current) {
+      setTimeout(() => calculateAndDisplayRoute(), 300);
+    }
+  };
+
+  // Calculate and display real-time route using Google Maps Directions API
+  const calculateAndDisplayRoute = () => {
+    if (!directionsService.current || !directionsRenderer.current || !origin || !destination) return;
+    
+    // Get coordinates for origin and destination
+    const originCoords = getStopCoordinates(origin);
+    const destCoords = getStopCoordinates(destination);
+    
+    // If coordinates are available, use them; otherwise use the stop names
+    const originLocation = originCoords ? 
+      { lat: originCoords.lat, lng: originCoords.lng } : origin;
+    const destLocation = destCoords ? 
+      { lat: destCoords.lat, lng: destCoords.lng } : destination;
+    
+    directionsService.current.route({
+      origin: originLocation,
+      destination: destLocation,
+      travelMode: window.google.maps.TravelMode.TRANSIT,
+      transitOptions: {
+        modes: [window.google.maps.TransitMode.BUS],
+        routingPreference: window.google.maps.TransitRoutePreference.FEWER_TRANSFERS
+      },
+      provideRouteAlternatives: true,
+      optimizeWaypoints: true,
+      avoidHighways: false,
+      avoidTolls: false,
+    }, (response, status) => {
+      if (status === 'OK') {
+        directionsRenderer.current.setDirections(response);
+        
+        // Ensure traffic layer is visible
+        if (trafficLayer.current) {
+          trafficLayer.current.setMap(mapInstance.current);
+        }
+        
+        // Removed: console.log('Google Directions response:', response);
+      } else {
+        console.error('Directions request failed due to ' + status);
+      }
+    });
   };
 
   const searchRoutes = async () => {
@@ -156,17 +249,26 @@ const JourneyPlanner = () => {
     }
 
     setLoading(true);
+    
+    // If in map view, calculate and display real-time route
+    if (viewType === 'map' && window.google && mapInstance.current) {
+      calculateAndDisplayRoute();
+    }
+    
     try {
       const response = await apiService.planJourney(origin, destination, filters.departTime);
       console.log('API Response:', response); // Debug log
       
-      if (response && Array.isArray(response)) {
-        const formattedRoutes = response.map(route => ({
+      // Handle both single object and array responses
+      const routesArray = response && Array.isArray(response) ? response : (response ? [response] : []);
+      
+      if (routesArray.length > 0) {
+        const formattedRoutes = routesArray.map(route => ({
           id: route.route.routeId,
           type: 'direct',
           buses: [route.route.routeShortName],
           duration: `${route.metrics.estimatedTimeMinutes} mins`,
-          fare: '₹25', // TODO: Implement fare calculation
+          fare: `₹${route.metrics.fare}`, // Use the fare from the backend
           from: origin,
           to: destination,
           departTime: route.departureTime || '09:00 AM', // Default time if not provided

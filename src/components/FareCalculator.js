@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
+import { fareApiService } from '../services/fareApi';
 import '../styles/common-page.css';
 
 const FareCalculator = () => {
@@ -20,9 +21,11 @@ const FareCalculator = () => {
   const [toSuggestions, setToSuggestions] = useState([]);
   const [showFromDropdown, setShowFromDropdown] = useState(false);
   const [showToDropdown, setShowToDropdown] = useState(false);
+  const [gtfsStops, setGtfsStops] = useState([]);
+  const [apiStatus, setApiStatus] = useState('checking');
 
-  // BMTC Stations
-  const stations = [
+  // BMTC Stations - Default fallback list
+  const defaultStations = [
     'Kempegowda Bus Station (Majestic)',
     'Shivajinagar',
     'MG Road',
@@ -54,6 +57,8 @@ const FareCalculator = () => {
     'Domlur',
     'Kalyan Nagar'
   ];
+  
+  const stations = gtfsStops.length > 0 ? gtfsStops : defaultStations;
 
   const calculateFare = (from, to, type, passenger) => {
     const distances = {
@@ -90,24 +95,86 @@ const FareCalculator = () => {
   useEffect(() => {
     const saved = localStorage.getItem('bmtc_fare_searches');
     if (saved) setRecentSearches(JSON.parse(saved));
+    
+    // Check fare API health and load GTFS stops
+    checkFareApi();
   }, []);
+  
+  const checkFareApi = async () => {
+    try {
+      const health = await fareApiService.checkHealth();
+      console.log('Fare API Status:', health);
+      setApiStatus('connected');
+      
+      // Load GTFS stops
+      loadGtfsStops();
+    } catch (error) {
+      console.warn('Fare API not available, using fallback data');
+      setApiStatus('offline');
+    }
+  };
+  
+  const loadGtfsStops = async () => {
+    try {
+      const response = await fareApiService.getAllStops();
+      if (response.stops && response.stops.length > 0) {
+        const stopNames = response.stops.map(stop => stop.stop_name);
+        setGtfsStops(stopNames);
+        console.log(`Loaded ${stopNames.length} GTFS stops`);
+      }
+    } catch (error) {
+      console.warn('Failed to load GTFS stops:', error);
+    }
+  };
 
-  const handleFromInput = (value) => {
+  const handleFromInput = async (value) => {
     setFromStation(value);
-    if (value.length > 0) {
+    if (value.length > 1) {
+      // Try API search first
+      if (apiStatus === 'connected') {
+        try {
+          const response = await fareApiService.searchStops(value);
+          if (response.stops && response.stops.length > 0) {
+            const stopNames = response.stops.map(s => s.stop_name);
+            setFromSuggestions(stopNames);
+            setShowFromDropdown(true);
+            return;
+          }
+        } catch (error) {
+          console.warn('API search failed, using local filter');
+        }
+      }
+      
+      // Fallback to local filtering
       const filtered = stations.filter(s => s.toLowerCase().includes(value.toLowerCase()));
-      setFromSuggestions(filtered);
+      setFromSuggestions(filtered.slice(0, 20));
       setShowFromDropdown(true);
     } else {
       setShowFromDropdown(false);
     }
   };
 
-  const handleToInput = (value) => {
+  const handleToInput = async (value) => {
     setToStation(value);
-    if (value.length > 0) {
+    if (value.length > 1) {
+      // Try API search first
+      if (apiStatus === 'connected') {
+        try {
+          const response = await fareApiService.searchStops(value);
+          if (response.stops && response.stops.length > 0) {
+            const stopNames = response.stops.map(s => s.stop_name);
+            setToSuggestions(stopNames);
+            setShowToDropdown(true);
+            return;
+          }
+        } catch (error) {
+          console.warn('API search failed, using local filter');
+        }
+      }
+      
+      // Fallback to local filtering
       const filtered = stations.filter(s => s.toLowerCase().includes(value.toLowerCase()));
-      setToSuggestions(filtered);
+      setToSuggestions(filtered.slice(0, 20));
       setShowToDropdown(true);
     } else {
       setShowToDropdown(false);
@@ -132,10 +199,47 @@ const FareCalculator = () => {
 
     setLoading(true);
     try {
-      const data = await apiService.calculateFare(fromStation, toStation, busType);
-      setFareDetails(data);
-    } catch (error) {
+      // Try fare API first (real GTFS data)
+      if (apiStatus === 'connected') {
+        try {
+          const fareData = await fareApiService.calculateFare(fromStation, toStation);
+          
+          // Transform to expected format
+          const details = {
+            distance: fareData.distance_km || 15,
+            baseFare: fareData.fare || 20,
+            discount: 0,
+            finalFare: fareData.fare || 20,
+            gst: fareData.gst || Math.ceil(fareData.fare * 0.05),
+            totalFare: fareData.total || Math.ceil(fareData.fare * 1.05),
+            source: fareData.source || 'gtfs',
+            message: fareData.message || '',
+            fareId: fareData.fare_id || '',
+            routeId: fareData.route_id || '',
+            actualOrigin: fareData.actual_origin_name || fromStation,
+            actualDestination: fareData.actual_destination_name || toStation
+          };
+          
+          setFareDetails(details);
+          setLoading(false);
+          setShowResults(true);
+          
+          const search = { from: fromStation, to: toStation, busType, passengerType, timestamp: new Date().toISOString() };
+          const updated = [search, ...recentSearches.slice(0, 4)];
+          setRecentSearches(updated);
+          localStorage.setItem('bmtc_fare_searches', JSON.stringify(updated));
+          return;
+        } catch (error) {
+          console.warn('Fare API failed, using fallback calculation:', error);
+        }
+      }
+      
+      // Fallback to local calculation
       console.log('Using local fare calculation');
+      const details = calculateFare(fromStation, toStation, busType, passengerType);
+      setFareDetails(details);
+    } catch (error) {
+      console.error('Error calculating fare:', error);
       const details = calculateFare(fromStation, toStation, busType, passengerType);
       setFareDetails(details);
     } finally {
@@ -203,6 +307,18 @@ const FareCalculator = () => {
             </div>
             <h2 style={{color:'#333',marginBottom:'10px'}}>{text.subtitle}</h2>
             <p style={{color:'#666'}}>Quick and easy fare estimation for all bus types</p>
+            {apiStatus === 'connected' && (
+              <div style={{display:'inline-flex',alignItems:'center',gap:'8px',background:'#e8f5e9',padding:'8px 16px',borderRadius:'20px',marginTop:'10px'}}>
+                <div style={{width:'8px',height:'8px',background:'#4caf50',borderRadius:'50%',animation:'pulse 2s infinite'}}></div>
+                <span style={{color:'#2e7d32',fontSize:'0.85rem',fontWeight:'600'}}>Live GTFS Data Active</span>
+              </div>
+            )}
+            {apiStatus === 'offline' && (
+              <div style={{display:'inline-flex',alignItems:'center',gap:'8px',background:'#fff3e0',padding:'8px 16px',borderRadius:'20px',marginTop:'10px'}}>
+                <i className="fas fa-exclamation-circle" style={{color:'#ff9800',fontSize:'0.9rem'}}></i>
+                <span style={{color:'#e65100',fontSize:'0.85rem',fontWeight:'600'}}>Using Estimated Fares</span>
+              </div>
+            )}
           </div>
 
           <div style={{display:'grid',gridTemplateColumns:'1fr',gap:'30px',maxWidth:'900px',margin:'0 auto'}}>
