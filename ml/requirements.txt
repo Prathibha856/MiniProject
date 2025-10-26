@@ -31,6 +31,11 @@ requests>=2.31.0
 # Kaggle Dataset Download
 kaggle>=1.5.16
 
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.1
+
 # GTFS Realtime (for future data collection)
 # gtfs-realtime-bindings>=1.0.0
 # protobuf>=4.23.0

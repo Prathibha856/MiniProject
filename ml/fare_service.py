@@ -1,42 +1,66 @@
 import os
 import pandas as pd
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from functools import lru_cache
+from time import time
+
+# Import logging utilities
+from logger import setup_logger, log_request, log_response, log_error, log_startup
+from config import config
+from validators import FareRequestValidator, JourneyPlanRequestValidator
+
+# Setup logger
+logger = setup_logger('fare_api', log_file=config.BASE_DIR / 'fare_api.log')
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "http://localhost:3000"}})
+CORS(app, origins=config.CORS_ORIGINS)
 
-# Create output directory for exports
-OUTPUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'output')
+# Use config-based paths
+OUTPUT_DIR = config.OUTPUT_DIR
+GTFS_DIR = config.GTFS_DIR
 
-# GTFS data directory
-GTFS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dataset', 'gtfs')
+# Request timing middleware
+@app.before_request
+def before_request():
+    """Record request start time"""
+    g.start_time = time()
+    log_request(logger, request.method, request.path)
 
-print("Loading GTFS data...")
+@app.after_request
+def after_request(response):
+    """Log response details"""
+    if hasattr(g, 'start_time'):
+        duration_ms = (time() - g.start_time) * 1000
+        log_response(logger, request.path, response.status_code, duration_ms)
+    return response
 
 @lru_cache(maxsize=1)
 def load_gtfs_data():
     """Load and cache GTFS data"""
     try:
+        logger.info(f"Loading GTFS data from {GTFS_DIR}")
+        
         # Check if GTFS directory exists
         if not os.path.exists(GTFS_DIR):
-            print(f"GTFS directory not found: {GTFS_DIR}")
+            logger.error(f"GTFS directory not found: {GTFS_DIR}")
             return None
             
         # Load fare attributes
-        fare_attr_path = os.path.join(GTFS_DIR, 'fare_attributes.txt')
+        fare_attr_path = config.GTFS_FARE_ATTRIBUTES
         if not os.path.exists(fare_attr_path):
-            print(f"Fare attributes file not found: {fare_attr_path}")
+            logger.error(f"Fare attributes file not found: {fare_attr_path}")
             return None
         fare_attr_df = pd.read_csv(fare_attr_path)
+        logger.info(f"Loaded {len(fare_attr_df)} fare attributes from fare_attributes.txt")
         
         # Load fare rules
-        fare_rules_path = os.path.join(GTFS_DIR, 'fare_rules.txt')
+        fare_rules_path = config.GTFS_FARE_RULES
         if not os.path.exists(fare_rules_path):
-            print(f"Fare rules file not found: {fare_rules_path}")
+            logger.error(f"Fare rules file not found: {fare_rules_path}")
             return None
         fare_rules_df = pd.read_csv(fare_rules_path)
+        logger.info(f"Loaded {len(fare_rules_df)} fare rules from fare_rules.txt")
         
         # Convert IDs to strings for consistent comparison
         if 'origin_id' in fare_rules_df.columns:
@@ -45,35 +69,33 @@ def load_gtfs_data():
             fare_rules_df['destination_id'] = fare_rules_df['destination_id'].astype(str)
         
         # Load stops
-        stops_path = os.path.join(GTFS_DIR, 'stops.txt')
+        stops_path = config.GTFS_STOPS
         if not os.path.exists(stops_path):
-            print(f"Stops file not found: {stops_path}")
+            logger.error(f"Stops file not found: {stops_path}")
             return None
         stops_df = pd.read_csv(stops_path)
+        logger.info(f"Loaded {len(stops_df)} stops from stops.txt")
         
         # Convert stop_id to string
         if 'stop_id' in stops_df.columns:
             stops_df['stop_id'] = stops_df['stop_id'].astype(str)
         
         # Load routes
-        routes_path = os.path.join(GTFS_DIR, 'routes.txt')
+        routes_path = config.GTFS_ROUTES
         if not os.path.exists(routes_path):
-            print(f"Routes file not found: {routes_path}")
+            logger.error(f"Routes file not found: {routes_path}")
             return None
         routes_df = pd.read_csv(routes_path)
+        logger.info(f"Loaded {len(routes_df)} routes from routes.txt")
         
         # Load shapes
-        shapes_path = os.path.join(GTFS_DIR, 'shapes.txt')
+        shapes_path = config.GTFS_SHAPES
         shapes_df = None
         if os.path.exists(shapes_path):
             shapes_df = pd.read_csv(shapes_path)
-            print(f"Loaded {len(shapes_df)} shape points")
+            logger.info(f"Loaded {len(shapes_df)} shape points from shapes.txt")
         
-        print("GTFS data loaded successfully")
-        print(f"Loaded {len(fare_attr_df)} fare attributes")
-        print(f"Loaded {len(fare_rules_df)} fare rules")
-        print(f"Loaded {len(stops_df)} stops")
-        print(f"Loaded {len(routes_df)} routes")
+        logger.info("GTFS data loaded successfully")
         
         return {
             'fare_attributes': fare_attr_df,
@@ -83,7 +105,7 @@ def load_gtfs_data():
             'shapes': shapes_df
         }
     except Exception as e:
-        print(f"Error loading GTFS data: {e}")
+        log_error(logger, e, "Error loading GTFS data")
         return None
 
 def get_route_shapes(shapes_df, route_short_name):
@@ -115,7 +137,7 @@ def get_route_shapes(shapes_df, route_short_name):
             for _, row in sorted_shape.iterrows()
         ]
     except Exception as e:
-        print(f"Error getting route shapes: {e}")
+        log_error(logger, e, "Error getting route shapes")
         return []
 
 def find_stop_by_name(stops_df, name):
@@ -281,7 +303,7 @@ def calculate_fare(origin_id, destination_id, route_id=None):
                 'source': 'distance_calculation'
             }
     except Exception as e:
-        print(f"Error calculating distance-based fare: {e}")
+        log_error(logger, e, "Error calculating distance-based fare")
     
     # Final fallback - base fare
     return {
@@ -296,6 +318,7 @@ def calculate_fare(origin_id, destination_id, route_id=None):
 @app.route('/api/fare/health', methods=['GET'])
 def health():
     """Health check endpoint"""
+    logger.debug("Health check endpoint called")
     return jsonify({
         'status': 'healthy',
         'service': 'BMTC Fare Calculation Service',
@@ -346,9 +369,22 @@ def calculate_fare_endpoint():
     """Calculate fare between two stops"""
     try:
         data = request.get_json()
-        origin = data.get('origin')
-        destination = data.get('destination')
-        route_id = data.get('route_id')  # Optional route_id for more accurate pricing
+        
+        # Validate request data
+        validator = FareRequestValidator()
+        is_valid, result = validator.validate(data)
+        if not is_valid:
+            errors = result.get('errors', [])
+            logger.warning(f"Invalid fare request: {errors}")
+            return jsonify({
+                'error': 'Invalid request data',
+                'details': errors
+            }), 400
+        
+        # Use validated data
+        origin = result['origin']
+        destination = result['destination']
+        route_id = result.get('route_id')  # Optional route_id for more accurate pricing
         
         # Load GTFS data
         gtfs_data = load_gtfs_data()
@@ -431,22 +467,38 @@ def calculate_fare_endpoint():
         # Add route name if available
         if route_name:
             response['route_name'] = route_name
-            
+        
+        logger.info(f"Calculated fare: ₹{price:.2f} for {origin} -> {destination} (distance ~{distance_km:.2f}km)")
         return jsonify(response)
         
     except Exception as e:
-        print(f"Error calculating fare: {e}")
+        log_error(logger, e, "Error calculating fare")
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/journey/plan', methods=['GET'])
 def plan_journey():
     """API endpoint to plan a journey between two stops"""
     try:
-        fromStop = request.args.get('fromStop')
-        toStop = request.args.get('toStop')
+        # Get query parameters
+        params = {
+            'fromStop': request.args.get('fromStop'),
+            'toStop': request.args.get('toStop')
+        }
         
-        if not fromStop or not toStop:
-            return jsonify({'error': 'Origin and destination stops are required'}), 400
+        # Validate request parameters
+        validator = JourneyPlanRequestValidator()
+        is_valid, result = validator.validate(params)
+        if not is_valid:
+            errors = result.get('errors', [])
+            logger.warning(f"Invalid journey plan request: {errors}")
+            return jsonify({
+                'error': 'Invalid request parameters',
+                'details': errors
+            }), 400
+        
+        # Use validated data
+        fromStop = result['fromStop']
+        toStop = result['toStop']
         
         gtfs_data = load_gtfs_data()
         if not gtfs_data:
@@ -564,6 +616,7 @@ def plan_journey():
 
 def export_fares_to_csv():
     """Export loaded GTFS fare data to CSV"""
+    logger.info("Starting GTFS fare data export")
     
     # Create output directory
     os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -571,8 +624,8 @@ def export_fares_to_csv():
     # Load GTFS data
     data = load_gtfs_data()
     if data is None:
-        print("Failed to load GTFS data for export")
-        return
+        logger.error("Failed to load GTFS data for export")
+        return False
     
     fare_attributes_df = data['fare_attributes']
     fare_rules_df = data['fare_rules']
@@ -581,19 +634,19 @@ def export_fares_to_csv():
     
     # Export fare attributes
     fare_attributes_df.to_csv(os.path.join(OUTPUT_DIR, 'fare_attributes.csv'), index=False)
-    print(f"Exported {len(fare_attributes_df)} fare attributes")
+    logger.info(f"Exported {len(fare_attributes_df)} fare attributes to CSV")
     
     # Export fare rules (this is large - 1.36M rows)
     fare_rules_df.to_csv(os.path.join(OUTPUT_DIR, 'fare_rules.csv'), index=False)
-    print(f"Exported {len(fare_rules_df)} fare rules")
+    logger.info(f"Exported {len(fare_rules_df)} fare rules to CSV")
     
     # Export stops with zone information
     stops_df.to_csv(os.path.join(OUTPUT_DIR, 'stops.csv'), index=False)
-    print(f"Exported {len(stops_df)} stops")
+    logger.info(f"Exported {len(stops_df)} stops to CSV")
     
     # Export routes
     routes_df.to_csv(os.path.join(OUTPUT_DIR, 'routes.csv'), index=False)
-    print(f"Exported {len(routes_df)} routes")
+    logger.info(f"Exported {len(routes_df)} routes to CSV")
     
     # Create a merged analysis file
     # Join fare_rules with fare_attributes
@@ -603,27 +656,26 @@ def export_fares_to_csv():
         how='left'
     )
     merged_fares.to_csv(os.path.join(OUTPUT_DIR, 'merged_fares_analysis.csv'), index=False)
-    print(f"Exported merged fare analysis with {len(merged_fares)} rows")
+    logger.info(f"Exported merged fare analysis with {len(merged_fares)} rows")
     
     # Analyze fare distribution
-    print("\nFare Price Distribution:")
-    print(fare_attributes_df['price'].value_counts().head(10))
+    fare_dist = fare_attributes_df['price'].value_counts().head(10)
+    logger.debug(f"Fare Price Distribution:\n{fare_dist}")
     
     # Find most common routes if route_id exists
     if 'route_id' in fare_rules_df.columns:
-        print("\nMost Common Routes:")
-        print(fare_rules_df['route_id'].value_counts().head(10))
+        route_dist = fare_rules_df['route_id'].value_counts().head(10)
+        logger.debug(f"Most Common Routes:\n{route_dist}")
     
     # Analyze zone-based fares
     if 'origin_id' in fare_rules_df.columns and 'destination_id' in fare_rules_df.columns:
-        print("\nSample Zone-Based Fares:")
         # Join with fare_attributes to get prices
         zone_fares = fare_rules_df.merge(
             fare_attributes_df,
             on='fare_id',
             how='left'
         ).groupby(['origin_id', 'destination_id'])['price'].mean()
-        print(zone_fares.head(10))
+        logger.debug(f"Sample Zone-Based Fares:\n{zone_fares.head(10)}")
     
     return True
 
@@ -654,8 +706,36 @@ if __name__ == '__main__':
     data = load_gtfs_data()
     
     # Export fare data to CSV for analysis
-    print("\nExporting GTFS fare data to CSV...")
-    export_fares_to_csv()
+    if data:
+        logger.info("Exporting GTFS fare data to CSV for analysis")
+        export_fares_to_csv()
     
-    print("\nStarting BMTC Fare Service on http://localhost:5001")
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    # Log startup information
+    log_startup(
+        logger,
+        'Bus Fare Calculation API',
+        config.FARE_API_HOST,
+        config.FARE_API_PORT,
+        gtfs_loaded=data is not None,
+        stops=len(data['stops']) if data else 0,
+        routes=len(data['routes']) if data else 0,
+        endpoints=6
+    )
+    
+    logger.info("Available Endpoints:")
+    logger.info("  - GET  /api/health")
+    logger.info("  - GET  /api/stops")
+    logger.info("  - GET  /api/stops/search")
+    logger.info("  - POST /api/calculate_fare")
+    logger.info("  - GET  /api/journey/plan")
+    logger.info("  - GET  /api/export-fares")
+    
+    try:
+        app.run(host=config.FARE_API_HOST, port=config.FARE_API_PORT, debug=config.DEBUG)
+    except KeyboardInterrupt:
+        logger.info("Server shutdown requested by user")
+    except Exception as e:
+        log_error(logger, e, "Unexpected error in fare service")
+        raise
+    finally:
+        logger.info("Bus Fare Calculation API - Stopped")

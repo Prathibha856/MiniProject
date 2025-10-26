@@ -1,0 +1,51 @@
+[run]
+# Coverage.py configuration
+
+# Source directories
+source = .
+
+# Omit these files/directories from coverage
+omit =
+    */tests/*
+    */test_*.py
+    */__pycache__/*
+    */venv/*
+    */env/*
+    */.venv/*
+    */setup.py
+    */conftest.py
+    # Exclude training scripts from coverage
+    train_model*.py
+    # Exclude test utilities
+    test_config.py
+
+# Branch coverage
+branch = True
+
+[report]
+# Reporting options
+exclude_lines =
+    # Exclude from coverage
+    pragma: no cover
+    # Don't complain about missing debug-only code
+    def __repr__
+    # Don't complain if tests don't hit defensive assertion code
+    raise AssertionError
+    raise NotImplementedError
+    # Don't complain if non-runnable code isn't run
+    if __name__ == .__main__.:
+    if __name__ == "__main__":
+    # Don't complain about abstract methods
+    @abstractmethod
+    # Don't complain about TYPE_CHECKING blocks
+    if TYPE_CHECKING:
+
+# Precision
+precision = 2
+
+# Show missing lines
+show_missing = True
+
+[html]
+# HTML report directory
+directory = htmlcov
