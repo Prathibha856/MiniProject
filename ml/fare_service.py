@@ -1,9 +1,14 @@
 import os
+from pathlib import Path
 import pandas as pd
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from functools import lru_cache
 from time import time
+
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
 
 # Import logging utilities
 from logger import setup_logger, log_request, log_response, log_error, log_startup
@@ -14,7 +19,11 @@ from validators import FareRequestValidator, JourneyPlanRequestValidator
 logger = setup_logger('fare_api', log_file=config.BASE_DIR / 'fare_api.log')
 
 app = Flask(__name__)
-CORS(app, origins=config.CORS_ORIGINS)
+CORS(app, 
+     origins=config.CORS_ORIGINS,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+     supports_credentials=config.CORS_ALLOW_CREDENTIALS)
 
 # Use config-based paths
 OUTPUT_DIR = config.OUTPUT_DIR
@@ -95,6 +104,20 @@ def load_gtfs_data():
             shapes_df = pd.read_csv(shapes_path)
             logger.info(f"Loaded {len(shapes_df)} shape points from shapes.txt")
         
+        # Load trips
+        trips_path = config.GTFS_TRIPS
+        trips_df = None
+        if os.path.exists(trips_path):
+            trips_df = pd.read_csv(trips_path)
+            logger.info(f"Loaded {len(trips_df)} trips from trips.txt")
+        
+        # Load stop_times
+        stop_times_path = config.GTFS_STOP_TIMES
+        stop_times_df = None
+        if os.path.exists(stop_times_path):
+            stop_times_df = pd.read_csv(stop_times_path)
+            logger.info(f"Loaded {len(stop_times_df)} stop times from stop_times.txt")
+        
         logger.info("GTFS data loaded successfully")
         
         return {
@@ -102,7 +125,9 @@ def load_gtfs_data():
             'fare_rules': fare_rules_df,
             'stops': stops_df,
             'routes': routes_df,
-            'shapes': shapes_df
+            'shapes': shapes_df,
+            'trips': trips_df,
+            'stop_times': stop_times_df
         }
     except Exception as e:
         log_error(logger, e, "Error loading GTFS data")
@@ -633,19 +658,19 @@ def export_fares_to_csv():
     routes_df = data['routes']
     
     # Export fare attributes
-    fare_attributes_df.to_csv(os.path.join(OUTPUT_DIR, 'fare_attributes.csv'), index=False)
+    fare_attributes_df.to_csv(OUTPUT_DIR / 'fare_attributes.csv', index=False)
     logger.info(f"Exported {len(fare_attributes_df)} fare attributes to CSV")
     
     # Export fare rules (this is large - 1.36M rows)
-    fare_rules_df.to_csv(os.path.join(OUTPUT_DIR, 'fare_rules.csv'), index=False)
+    fare_rules_df.to_csv(OUTPUT_DIR / 'fare_rules.csv', index=False)
     logger.info(f"Exported {len(fare_rules_df)} fare rules to CSV")
     
     # Export stops with zone information
-    stops_df.to_csv(os.path.join(OUTPUT_DIR, 'stops.csv'), index=False)
+    stops_df.to_csv(OUTPUT_DIR / 'stops.csv', index=False)
     logger.info(f"Exported {len(stops_df)} stops to CSV")
     
     # Export routes
-    routes_df.to_csv(os.path.join(OUTPUT_DIR, 'routes.csv'), index=False)
+    routes_df.to_csv(OUTPUT_DIR / 'routes.csv', index=False)
     logger.info(f"Exported {len(routes_df)} routes to CSV")
     
     # Create a merged analysis file
@@ -655,7 +680,7 @@ def export_fares_to_csv():
         on='fare_id',
         how='left'
     )
-    merged_fares.to_csv(os.path.join(OUTPUT_DIR, 'merged_fares_analysis.csv'), index=False)
+    merged_fares.to_csv(OUTPUT_DIR / 'merged_fares_analysis.csv', index=False)
     logger.info(f"Exported merged fare analysis with {len(merged_fares)} rows")
     
     # Analyze fare distribution

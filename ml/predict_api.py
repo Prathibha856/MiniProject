@@ -3,6 +3,10 @@ Prediction API Backend
 Flask/FastAPI endpoint for serving bus crowd predictions
 """
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from flasgger import Swagger, swag_from

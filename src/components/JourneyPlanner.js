@@ -3,11 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { apiService } from '../services/api';
 import { getAllStopNames, getStopCoordinates, searchStops } from '../data/busStops';
+import { useLoadScript } from '@react-google-maps/api';
 import '../styles/journey-planner.css';
+
+const libraries = ['places'];
 
 const JourneyPlanner = () => {
   const navigate = useNavigate();
   const { language, addFavorite } = useApp();
+  
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: process.env.REACT_APP_GOOGLE_MAPS_KEY,
+    libraries
+  });
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
   const [originSuggestions, setOriginSuggestions] = useState([]);
@@ -39,16 +47,6 @@ const JourneyPlanner = () => {
   useEffect(() => {
     const stopNames = getAllStopNames();
     setStations(stopNames);
-    
-    // Load Google Maps script if not already loaded
-    if (!window.google) {
-      const script = document.createElement('script');
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.REACT_APP_GOOGLE_MAPS_KEY}&libraries=places,directions`;
-      script.async = true;
-      script.defer = true;
-      script.onload = () => console.log('Google Maps API loaded');
-      document.head.appendChild(script);
-    }
   }, []);
 
   // Sample routes data (will be replaced with API call)
@@ -90,26 +88,33 @@ const JourneyPlanner = () => {
   }, []);
 
   useEffect(() => {
-    // Initialize map when switching to map view
-    if (viewType === 'map' && window.google && mapRef.current && !mapInstance.current) {
-      setTimeout(() => {
+    // Initialize map when switching to map view and Google Maps is loaded
+    if (viewType === 'map' && isLoaded && mapRef.current && !mapInstance.current) {
+      const timer = setTimeout(() => {
+        console.log('Initializing map on view change');
         initMap();
       }, 100);
+      return () => clearTimeout(timer);
     }
-  }, [viewType]);
+  }, [viewType, isLoaded]);
 
   useEffect(() => {
     // Update map when routes change and map view is active
-    if (viewType === 'map' && mapInstance.current && routes.length > 0) {
+    if (viewType === 'map' && mapInstance.current && routes.length > 0 && isLoaded) {
+      console.log('Routes updated, displaying on map');
       setTimeout(() => {
         displayAllRoutesOnMap();
       }, 200);
     }
-  }, [routes, viewType]);
+  }, [routes, viewType, isLoaded]);
 
   const initMap = () => {
-    if (!mapRef.current || !window.google) return;
+    if (!mapRef.current || !window.google) {
+      console.log('Cannot initialize map - missing ref or Google Maps API');
+      return;
+    }
     
+    console.log('Creating map instance...');
     mapInstance.current = new window.google.maps.Map(mapRef.current, {
       zoom: 12,
       center: { lat: 12.9716, lng: 77.5946 }, // Bangalore center
@@ -117,6 +122,8 @@ const JourneyPlanner = () => {
       streetViewControl: false,
       fullscreenControl: true
     });
+    
+    console.log('Map instance created:', mapInstance.current);
 
     // Initialize directions service and renderer
     directionsService.current = new window.google.maps.DirectionsService();
@@ -250,11 +257,6 @@ const JourneyPlanner = () => {
 
     setLoading(true);
     
-    // If in map view, calculate and display real-time route
-    if (viewType === 'map' && window.google && mapInstance.current) {
-      calculateAndDisplayRoute();
-    }
-    
     try {
       const response = await apiService.planJourney(origin, destination, filters.departTime);
       console.log('API Response:', response); // Debug log
@@ -263,27 +265,37 @@ const JourneyPlanner = () => {
       const routesArray = response && Array.isArray(response) ? response : (response ? [response] : []);
       
       if (routesArray.length > 0) {
-        const formattedRoutes = routesArray.map(route => ({
-          id: route.route.routeId,
-          type: 'direct',
-          buses: [route.route.routeShortName],
-          duration: `${route.metrics.estimatedTimeMinutes} mins`,
-          fare: `₹${route.metrics.fare}`, // Use the fare from the backend
-          from: origin,
-          to: destination,
-          departTime: route.departureTime || '09:00 AM', // Default time if not provided
-          arriveTime: route.arrivalTime || '10:00 AM', // Default time if not provided
-          stops: route.stops.map(stop => stop.stopName),
-          serviceType: route.route.routeType === 3 ? 'Ordinary' : 'AC',
-          shapes: route.shapes || [],
-          stopCoordinates: route.stops.map(stop => ({
-            lat: parseFloat(stop.stopLat),
-            lng: parseFloat(stop.stopLon),
-            name: stop.stopName
-          }))
-        }));
+        const formattedRoutes = routesArray.map(route => {
+          console.log('Processing route:', route); // Debug
+          const stopCoords = route.stops.map(stop => {
+            const lat = parseFloat(stop.stopLat);
+            const lng = parseFloat(stop.stopLon);
+            console.log(`Stop: ${stop.stopName}, Lat: ${lat}, Lng: ${lng}`);
+            return {
+              lat: lat,
+              lng: lng,
+              name: stop.stopName
+            };
+          });
+          
+          return {
+            id: route.route.routeId,
+            type: 'direct',
+            buses: [route.route.routeShortName],
+            duration: `${route.metrics.estimatedTimeMinutes} mins`,
+            fare: `₹${route.metrics.fare}`,
+            from: origin,
+            to: destination,
+            departTime: route.departureTime || '09:00 AM',
+            arriveTime: route.arrivalTime || '10:00 AM',
+            stops: route.stops.map(stop => stop.stopName),
+            serviceType: route.route.routeType === 3 ? 'Ordinary' : 'AC',
+            shapes: route.shapes || [],
+            stopCoordinates: stopCoords
+          };
+        });
 
-        console.log('Formatted Routes:', formattedRoutes); // Debug log
+        console.log('Formatted Routes with coordinates:', formattedRoutes);
 
         // Apply filters
         let filteredRoutes = formattedRoutes;
@@ -301,7 +313,8 @@ const JourneyPlanner = () => {
         setRoutes(filteredRoutes);
         
         // If map view is active, update the map
-        if (viewType === 'map' && mapInstance.current) {
+        if (viewType === 'map' && mapInstance.current && isLoaded) {
+          console.log('Will display routes on map in 500ms');
           setTimeout(() => displayAllRoutesOnMap(), 500);
         }
       }
@@ -339,7 +352,10 @@ const JourneyPlanner = () => {
   };
 
   const displayAllRoutesOnMap = () => {
-    if (!mapInstance.current || !window.google) return;
+    if (!mapInstance.current || !window.google || !isLoaded) {
+      console.log('Cannot display routes - map not ready');
+      return;
+    }
     console.log('Displaying routes on map:', routes); // Debug log
     
     // Clear existing markers and polylines
@@ -357,44 +373,77 @@ const JourneyPlanner = () => {
     routes.forEach((route, routeIndex) => {
       console.log('Processing route:', route); // Debug log
       
-      // Draw route shapes if available
-      if (route.shapes && route.shapes.length > 0) {
-        console.log('Drawing shapes for route:', route.id); // Debug log
-        const shapePath = route.shapes.map(point => ({
-          lat: parseFloat(point.shapePtLat),
-          lng: parseFloat(point.shapePtLon)
-        })).filter(point => !isNaN(point.lat) && !isNaN(point.lng));
+      // Always draw a simple direct line between origin and destination
+      if (route.stopCoordinates && route.stopCoordinates.length >= 2) {
+        console.log('Drawing line for route:', route.id);
+        
+        const originStop = route.stopCoordinates[0];
+        const destStop = route.stopCoordinates[route.stopCoordinates.length - 1];
+        
+        // Draw direct line from A to B
+        const directLine = new window.google.maps.Polyline({
+          path: [
+            { lat: originStop.lat, lng: originStop.lng },
+            { lat: destStop.lat, lng: destStop.lng }
+          ],
+          geodesic: true,
+          strokeColor: '#2196f3',
+          strokeOpacity: 0.9,
+          strokeWeight: 6,
+          map: mapInstance.current,
+          icons: [{
+            icon: {
+              path: window.google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+              scale: 3,
+              fillColor: '#2196f3',
+              fillOpacity: 1,
+              strokeColor: 'white',
+              strokeWeight: 2
+            },
+            offset: '100%'
+          }]
+        });
+        
+        mapInstance.current.polylines.push(directLine);
+        
+        // If we have detailed shape data, draw it with lower opacity for context
+        if (route.shapes && route.shapes.length > 5) {
+          console.log('Also drawing detailed route shapes');
+          const shapePath = route.shapes.map(point => ({
+            lat: parseFloat(point.shapePtLat),
+            lng: parseFloat(point.shapePtLon)
+          })).filter(point => !isNaN(point.lat) && !isNaN(point.lng));
 
-        if (shapePath.length > 0) {
-          const routeLine = new window.google.maps.Polyline({
-            path: shapePath,
-            geodesic: true,
-            strokeColor: routeIndex === 0 ? '#2196f3' : '#666',
-            strokeOpacity: routeIndex === 0 ? 1 : 0.6,
-            strokeWeight: routeIndex === 0 ? 4 : 3,
-            map: mapInstance.current
-          });
-          
-          mapInstance.current.polylines.push(routeLine);
-          
-          // Extend bounds with shape points
-          shapePath.forEach(point => bounds.extend(point));
+          if (shapePath.length > 0) {
+            const detailedLine = new window.google.maps.Polyline({
+              path: shapePath,
+              geodesic: true,
+              strokeColor: '#90CAF9',
+              strokeOpacity: 0.4,
+              strokeWeight: 3,
+              map: mapInstance.current
+            });
+            
+            mapInstance.current.polylines.push(detailedLine);
+          }
         }
       } else {
-        console.log('No shapes available for route:', route.id); // Debug log
+        console.log('Not enough stops to draw line for route:', route.id);
       }
 
       // Add stop markers
       if (route.stopCoordinates && route.stopCoordinates.length > 0) {
-        console.log('Adding stop markers for route:', route.id); // Debug log
+        console.log('Adding stop markers for route:', route.id, 'Count:', route.stopCoordinates.length);
         route.stopCoordinates.forEach((stop, idx) => {
           if (!stop.lat || !stop.lng || isNaN(stop.lat) || isNaN(stop.lng)) {
-            console.log('Invalid stop coordinates:', stop);
+            console.error('Invalid stop coordinates:', stop);
             return;
           }
 
           const isOrigin = idx === 0;
           const isDestination = idx === route.stopCoordinates.length - 1;
+          
+          console.log(`Creating marker ${idx}: ${stop.name}, Origin: ${isOrigin}, Dest: ${isDestination}`);
           
           const marker = new window.google.maps.Marker({
             position: { lat: stop.lat, lng: stop.lng },
@@ -408,7 +457,12 @@ const JourneyPlanner = () => {
               strokeColor: '#fff',
               strokeWeight: 2
             },
-            label: isOrigin ? 'A' : isDestination ? 'B' : ''
+            label: {
+              text: isOrigin ? 'A' : isDestination ? 'B' : '',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: 'bold'
+            }
           });
 
           // Add click listener to show stop info
@@ -437,7 +491,11 @@ const JourneyPlanner = () => {
           });
 
           mapInstance.current.markers.push(marker);
-          bounds.extend(stop);
+          
+          // Extend bounds with valid coordinates
+          const latLng = new window.google.maps.LatLng(stop.lat, stop.lng);
+          bounds.extend(latLng);
+          console.log('Extended bounds with:', stop.lat, stop.lng);
         });
       } else {
         console.log('No stop coordinates available for route:', route.id); // Debug log
@@ -445,10 +503,17 @@ const JourneyPlanner = () => {
     });
 
     // Fit map to show all markers and shapes
+    console.log('Bounds isEmpty:', bounds.isEmpty());
     if (!bounds.isEmpty()) {
+      console.log('Fitting bounds to map');
       mapInstance.current.fitBounds(bounds);
-      // Add some padding to the bounds
-      mapInstance.current.setZoom(mapInstance.current.getZoom() - 1);
+      // Add some padding
+      setTimeout(() => {
+        const currentZoom = mapInstance.current.getZoom();
+        if (currentZoom > 1) {
+          mapInstance.current.setZoom(currentZoom - 1);
+        }
+      }, 100);
     } else {
       console.log('No valid bounds to fit map to'); // Debug log
       // Center on Bangalore if no bounds
@@ -572,6 +637,31 @@ const JourneyPlanner = () => {
   };
 
   const text = t[language];
+
+  if (loadError) {
+    return (
+      <div style={{padding: '40px', textAlign: 'center'}}>
+        <h2>Map Loading Error</h2>
+        <p>Error loading Google Maps. This might be due to:</p>
+        <ul style={{textAlign: 'left', maxWidth: '600px', margin: '20px auto'}}>
+          <li>API key billing not enabled (Google Maps requires billing)</li>
+          <li>API key restrictions blocking localhost</li>
+          <li>Network connectivity issues</li>
+        </ul>
+        <p>The app will still work, but map features will be limited.</p>
+        <button onClick={() => navigate('/')} className="btn btn-primary">Go Home</button>
+      </div>
+    );
+  }
+
+  if (!isLoaded) {
+    return (
+      <div style={{padding: '40px', textAlign: 'center'}}>
+        <i className="fas fa-spinner fa-spin" style={{fontSize: '48px', color: '#d32f2f'}}></i>
+        <p style={{marginTop: '20px'}}>Loading Google Maps...</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -821,14 +911,13 @@ const JourneyPlanner = () => {
                 </div>
               ) : (
                 <div className="map-view">
-                  {routes.length === 0 ? (
-                    <div className="empty-state">
+                  <div ref={mapRef} id="map" style={{width:'100%',height:'500px',borderRadius:'12px'}}></div>
+                  {routes.length === 0 && (
+                    <div className="empty-state" style={{position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 1000, background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)'}}>
                       <i className="fas fa-map-marked-alt"></i>
                       <h3>No Routes to Display</h3>
                       <p>Search for routes to view them on the map</p>
                     </div>
-                  ) : (
-                    <div ref={mapRef} id="map" style={{width:'100%',height:'500px',borderRadius:'12px'}}></div>
                   )}
                 </div>
               )}

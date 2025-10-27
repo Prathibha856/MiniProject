@@ -61,51 +61,93 @@ const AroundStation = () => {
     }
   }, []);
 
-  // Search for nearby places
-  const searchNearbyPlaces = useCallback((amenityType) => {
-    if (!map || !userLocation) return;
+  // Search for nearby places using Fetch API
+  const searchNearbyPlaces = useCallback(async (amenityType) => {
+    if (!userLocation) {
+      setError('Location not available');
+      return;
+    }
 
     setLoading(true);
     setSelectedAmenity(amenityType);
     setPlaces([]);
     setSelectedPlace(null);
+    setError(null);
 
-    const service = new window.google.maps.places.PlacesService(map);
-    const request = {
-      location: new window.google.maps.LatLng(userLocation.lat, userLocation.lng),
-      radius: searchRadius,
-      type: [amenityType.type]
-    };
+    console.log('Searching for:', amenityType.label);
+    console.log('Location:', userLocation);
+    console.log('Radius:', searchRadius);
 
-    service.nearbySearch(request, (results, status) => {
-      setLoading(false);
-      if (status === window.google.maps.places.PlacesServiceStatus.OK) {
-        setPlaces(results);
-      } else {
-        setError('Could not find nearby places. Try again.');
+    try {
+      // Use Google Places API via HTTP
+      const url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${userLocation.lat},${userLocation.lng}&radius=${searchRadius}&type=${amenityType.type}&key=${GOOGLE_MAPS_API_KEY}`;
+      
+      // Note: Direct fetch won't work due to CORS, so we need to use a proxy or the JS library
+      // Let's try using the JS library with a div element
+      if (!map) {
+        setLoading(false);
+        setError('Map not ready');
+        return;
       }
-    });
-  }, [map, userLocation, searchRadius]);
 
-  const onMapLoad = useCallback((map) => {
-    setMap(map);
-  }, []);
+      // Create a temporary service
+      const service = new window.google.maps.places.PlacesService(map);
+      const request = {
+        location: new window.google.maps.LatLng(userLocation.lat, userLocation.lng),
+        radius: searchRadius,
+        type: amenityType.type
+      };
 
-  const handlePlaceClick = (place) => {
-    setSelectedPlace(place);
-    if (map) {
-      map.panTo(place.geometry.location);
-      map.setZoom(16);
+      console.log('Making Places API request:', request);
+
+      service.nearbySearch(request, (results, status) => {
+        setLoading(false);
+        console.log('Search status:', status);
+        console.log('Results:', results);
+        
+        if (status === 'OK' && results) {
+          console.log('Found', results.length, 'places');
+          setPlaces(results);
+          if (results.length === 0) {
+            setError(`No ${amenityType.label.toLowerCase()} found nearby. Try increasing search radius.`);
+          }
+        } else if (status === 'ZERO_RESULTS') {
+          setError(`No ${amenityType.label.toLowerCase()} found nearby. Try increasing search radius.`);
+        } else if (status === 'REQUEST_DENIED') {
+          setError('API request denied. Check API key and billing in Google Cloud Console.');
+          console.error('REQUEST_DENIED - Check: 1) Billing enabled 2) Places API enabled 3) API key valid');
+        } else if (status === 'OVER_QUERY_LIMIT') {
+          setError('API quota exceeded.');
+        } else if (status === 'INVALID_REQUEST') {
+          setError('Invalid request.');
+          console.error('INVALID_REQUEST:', request);
+        } else {
+          setError(`Search failed: ${status}`);
+          console.error('Status:', status);
+        }
+      });
+    } catch (err) {
+      console.error('Error in searchNearbyPlaces:', err);
+      setLoading(false);
+      setError('Error: ' + err.message);
     }
-  };
+  }, [map, userLocation, searchRadius]);
 
   const calculateDistance = (place) => {
     if (!userLocation) return null;
     
     const lat1 = userLocation.lat;
     const lon1 = userLocation.lng;
-    const lat2 = place.geometry.location.lat();
-    const lon2 = place.geometry.location.lng();
+    
+    // Handle both old and new API formats
+    let lat2, lon2;
+    if (typeof place.geometry.location.lat === 'function') {
+      lat2 = place.geometry.location.lat();
+      lon2 = place.geometry.location.lng();
+    } else {
+      lat2 = place.geometry.location.lat;
+      lon2 = place.geometry.location.lng;
+    }
     
     const R = 6371; // Earth's radius in km
     const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -119,8 +161,31 @@ const AroundStation = () => {
     return distance < 1 ? `${(distance * 1000).toFixed(0)} m` : `${distance.toFixed(1)} km`;
   };
 
+  const onMapLoad = useCallback((map) => {
+    console.log('Google Maps loaded successfully');
+    console.log('Places library available:', !!window.google?.maps?.places?.PlacesService);
+    setMap(map);
+  }, []);
+
+  const handlePlaceClick = (place) => {
+    setSelectedPlace(place);
+    if (map) {
+      map.panTo(place.geometry.location);
+      map.setZoom(16);
+    }
+  };
+
+
   const getDirections = (place) => {
-    const url = `https://www.google.com/maps/dir/?api=1&destination=${place.geometry.location.lat()},${place.geometry.location.lng()}`;
+    let lat, lng;
+    if (typeof place.geometry.location.lat === 'function') {
+      lat = place.geometry.location.lat();
+      lng = place.geometry.location.lng();
+    } else {
+      lat = place.geometry.location.lat;
+      lng = place.geometry.location.lng;
+    }
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
     window.open(url, '_blank');
   };
 

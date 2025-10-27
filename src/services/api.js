@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5001/api';
-const SMART_BACKEND_URL = 'http://localhost:5001';
+const FARE_API_URL = process.env.REACT_APP_FARE_API_URL || 'http://localhost:5001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -35,7 +35,7 @@ export const busService = {
   // Smart Backend Routes API
   getRoutes: async () => {
     try {
-      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes`);
+      const response = await axios.get(`${FARE_API_URL}/routes`);
       return response.data;
     } catch (error) {
       console.error('API Error:', error);
@@ -45,7 +45,17 @@ export const busService = {
 
   getRoute: async (routeId) => {
     try {
-      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes/${routeId}`);
+      const response = await axios.get(`${FARE_API_URL}/routes/${routeId}`);
+      return response.data;
+    } catch (error) {
+      console.error('API Error:', error);
+      throw error;
+    }
+  },
+
+  getRouteDetails: async (routeId) => {
+    try {
+      const response = await axios.get(`${FARE_API_URL}/routes/${routeId}/details`);
       return response.data;
     } catch (error) {
       console.error('API Error:', error);
@@ -55,7 +65,7 @@ export const busService = {
 
   getStops: async () => {
     try {
-      const response = await axios.get(`${SMART_BACKEND_URL}/api/stops`);
+      const response = await axios.get(`${FARE_API_URL}/stops`);
       return response.data;
     } catch (error) {
       console.error('API Error:', error);
@@ -65,7 +75,7 @@ export const busService = {
 
   searchRoutes: async (query) => {
     try {
-      const response = await axios.get(`${SMART_BACKEND_URL}/api/routes/search?q=${query}`);
+      const response = await axios.get(`${FARE_API_URL}/routes/search?q=${query}`);
       return response.data;
     } catch (error) {
       console.error('API Error:', error);
@@ -105,7 +115,7 @@ export const apiService = {
         ...(time && { time }),
         ...(date && { date })
       });
-      const response = await axios.get(`${SMART_BACKEND_URL}/api/journey/plan?${params}`);
+      const response = await axios.get(`${FARE_API_URL}/journey/plan?${params}`);
       return response.data;
     } catch (error) {
       console.error('API Error:', error);

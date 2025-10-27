@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Journey Planner API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2196f3; }
+        input, button {
+            padding: 10px;
+            margin: 5px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #2196f3;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover { background: #1976d2; }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #2196f3;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error { border-left-color: #f44336; background: #ffebee; }
+        .success { border-left-color: #4caf50; background: #e8f5e9; }
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px;
+        }
+        .status.checking { background: #fff3e0; }
+        .status.online { background: #e8f5e9; color: #2e7d32; }
+        .status.offline { background: #ffebee; color: #c62828; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚌 BMTC Journey Planner - API Test</h1>
+        
+        <div id="status" class="status checking">Checking backend status...</div>
+        
+        <h2>Test Journey Planning</h2>
+        <div>
+            <input type="text" id="origin" placeholder="Origin (e.g., Kempegowda Bus Station(Majestic/KBS))" style="width: 300px;">
+            <input type="text" id="destination" placeholder="Destination (e.g., White Field Bus Station (Vydehi Hospital))" style="width: 300px;">
+            <button onclick="searchJourney()">Search Journey</button>
+        </div>
+        
+        <h3>Quick Tests:</h3>
+        <button onclick="testHealth()">Test Health</button>
+        <button onclick="testStops()">Get Stops</button>
+        <button onclick="testSearchStops()">Search Stops (Majestic)</button>
+        <button onclick="testJourney()">Test Journey</button>
+        
+        <div id="result" class="result" style="display:none;"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5001/api';
+        
+        // Check backend status on load
+        window.onload = function() {
+            checkBackendStatus();
+        };
+        
+        function checkBackendStatus() {
+            fetch(`${API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => {
+                    showStatus('online', `✅ Backend Online: ${data.service}`);
+                })
+                .catch(error => {
+                    showStatus('offline', `❌ Backend Offline: ${error.message}`);
+                });
+        }
+        
+        function showStatus(type, message) {
+            const statusEl = document.getElementById('status');
+            statusEl.className = `status ${type}`;
+            statusEl.textContent = message;
+        }
+        
+        function showResult(data, isError = false) {
+            const resultEl = document.getElementById('result');
+            resultEl.style.display = 'block';
+            resultEl.className = isError ? 'result error' : 'result success';
+            resultEl.textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function testHealth() {
+            showResult({ status: 'Testing...' });
+            fetch(`${API_BASE}/health`)
+                .then(response => response.json())
+                .then(data => showResult(data))
+                .catch(error => showResult({ error: error.message }, true));
+        }
+        
+        function testStops() {
+            showResult({ status: 'Fetching stops...' });
+            fetch(`${API_BASE}/stops`)
+                .then(response => response.json())
+                .then(data => {
+                    // Show first 10 stops only
+                    const preview = {
+                        count: data.count,
+                        sample_stops: data.stops.slice(0, 10)
+                    };
+                    showResult(preview);
+                })
+                .catch(error => showResult({ error: error.message }, true));
+        }
+        
+        function testSearchStops() {
+            showResult({ status: 'Searching stops...' });
+            fetch(`${API_BASE}/stops/search?q=majestic`)
+                .then(response => response.json())
+                .then(data => showResult(data))
+                .catch(error => showResult({ error: error.message }, true));
+        }
+        
+        function testJourney() {
+            searchJourney('Kempegowda Bus Station(Majestic/KBS)', 'White Field Bus Station (Vydehi Hospital)');
+        }
+        
+        function searchJourney(from, to) {
+            const origin = from || document.getElementById('origin').value;
+            const destination = to || document.getElementById('destination').value;
+            
+            if (!origin || !destination) {
+                showResult({ error: 'Please enter both origin and destination' }, true);
+                return;
+            }
+            
+            showResult({ status: 'Planning journey...' });
+            
+            const url = `${API_BASE}/journey/plan?fromStop=${encodeURIComponent(origin)}&toStop=${encodeURIComponent(destination)}`;
+            
+            console.log('Requesting:', url);
+            
+            fetch(url)
+                .then(response => {
+                    console.log('Response status:', response.status);
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Journey data:', data);
+                    
+                    // Format the result nicely
+                    if (Array.isArray(data) && data.length > 0) {
+                        const journey = data[0];
+                        const formatted = {
+                            route: journey.route.routeShortName,
+                            origin: journey.stops[0].stopName,
+                            destination: journey.stops[journey.stops.length - 1].stopName,
+                            distance: `${journey.metrics.distance} km`,
+                            time: `${journey.metrics.estimatedTimeMinutes} mins`,
+                            fare: `₹${journey.metrics.fare}`,
+                            stops_count: journey.stops.length,
+                            shapes_count: journey.shapes.length,
+                            full_data: data
+                        };
+                        showResult(formatted);
+                    } else {
+                        showResult(data);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    showResult({ 
+                        error: error.message,
+                        url: url,
+                        suggestion: 'Make sure fare_service.py is running on port 5001'
+                    }, true);
+                });
+        }
+    </script>
+</body>
+</html>

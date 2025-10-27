@@ -143,11 +143,22 @@ const SearchRoute = () => {
   const loadAllRoutes = async () => {
     try {
       setLoading(true);
-      const data = await busService.getRoutes();
-      setRoutes(data);
-      setFilteredRoutes(data);
+      const response = await busService.getRoutes();
+      console.log('Routes API response:', response);
+      const routesData = response.routes || response || [];
+      // Transform GTFS data to match UI expectations
+      const transformedRoutes = routesData.map(r => ({
+        routeNumber: r.route_short_name || r.route_id,
+        routeName: r.route_long_name || '',
+        routeId: r.route_id,
+        origin: r.route_long_name ? r.route_long_name.split(' to ')[0] || r.route_long_name.split('-')[0] : '',
+        destination: r.route_long_name ? r.route_long_name.split(' to ')[1] || r.route_long_name.split('-')[1] : '',
+        serviceType: r.route_type === '3' ? 'Ordinary' : 'Other'
+      }));
+      setRoutes(transformedRoutes);
+      setFilteredRoutes(transformedRoutes);
     } catch (error) {
-      console.log('Using demo data');
+      console.log('Using demo data', error);
       setRoutes(demoRoutes);
       setFilteredRoutes(demoRoutes);
     } finally {
@@ -252,9 +263,28 @@ const SearchRoute = () => {
 
   const loadRouteDetails = async (routeNumber) => {
     try {
-      const data = await apiService.getRouteDetails(routeNumber);
-      setRouteDetails(data);
+      // Use the selected route's routeId for API call
+      const routeId = selectedRoute?.routeId || routeNumber;
+      const data = await busService.getRouteDetails(routeId);
+      console.log('Route details:', data);
+      // Transform to UI format
+      const transformed = {
+        routeNumber: data.route_short_name || routeNumber,
+        routeName: data.route_long_name || '',
+        routeId: data.route_id,
+        origin: data.route_long_name ? data.route_long_name.split(' to ')[0] || data.route_long_name.split('-')[0] : '',
+        destination: data.route_long_name ? data.route_long_name.split(' to ')[1] || data.route_long_name.split('-')[1] : '',
+        totalStops: data.total_stops || 0,
+        totalTrips: data.total_trips || 0,
+        operatingHours: data.operating_hours?.first && data.operating_hours?.last 
+          ? `${data.operating_hours.first} - ${data.operating_hours.last}` 
+          : 'N/A',
+        serviceType: data.route_type === '3' ? 'Ordinary' : 'Other',
+        stops: [] // We don't have stop names yet, would need another API call
+      };
+      setRouteDetails(transformed);
     } catch (error) {
+      console.error('Error loading route details:', error);
       const demo = demoRoutes.find(r => r.routeNumber === routeNumber);
       setRouteDetails(demo);
     }
@@ -626,19 +656,19 @@ const SearchRoute = () => {
                     <div className="route-info-grid">
                       <div className="info-item">
                         <span className="info-label">{text.origin}</span>
-                        <span className="info-value">{routeDetails.origin}</span>
+                        <span className="info-value">{routeDetails.origin || 'N/A'}</span>
                       </div>
                       <div className="info-item">
                         <span className="info-label">{text.destination}</span>
-                        <span className="info-value">{routeDetails.destination}</span>
+                        <span className="info-value">{routeDetails.destination || 'N/A'}</span>
                       </div>
                       <div className="info-item">
-                        <span className="info-label">{text.distance}</span>
-                        <span className="info-value">{routeDetails.distance}</span>
+                        <span className="info-label">Total Stops</span>
+                        <span className="info-value">{routeDetails.totalStops || 0}</span>
                       </div>
                       <div className="info-item">
-                        <span className="info-label">{text.frequency}</span>
-                        <span className="info-value">{routeDetails.frequency}</span>
+                        <span className="info-label">Total Trips</span>
+                        <span className="info-value">{routeDetails.totalTrips || 0}</span>
                       </div>
                       <div className="info-item">
                         <span className="info-label">{text.serviceType}</span>
@@ -650,20 +680,28 @@ const SearchRoute = () => {
                       </div>
                     </div>
                     
-                    {/* Stops List */}
-                    {routeDetails.stops && (
-                      <div className="stops-section">
-                        <h4>{text.stops} ({routeDetails.stops.length})</h4>
-                        <div className="stops-list">
-                          {routeDetails.stops.map((stop, idx) => (
-                            <div key={idx} className="stop-item">
-                              <span className="stop-number">{idx + 1}</span>
-                              <span className="stop-name">{stop}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                    {/* Action Buttons */}
+                    <div className="route-actions" style={{marginTop:'20px',display:'flex',gap:'10px'}}>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => {
+                          // Navigate to Track Bus page with pre-filled route number
+                          navigate('/track-bus', { state: { busNumber: routeDetails.routeNumber } });
+                        }}
+                        style={{flex:1}}
+                        title={`Track buses on route ${routeDetails.routeNumber}`}
+                      >
+                        <i className="fas fa-map-marker-alt"></i> Track Bus
+                      </button>
+                      <button 
+                        className="btn btn-primary" 
+                        onClick={() => navigate(`/fare-calculator?route=${routeDetails.routeId || routeDetails.routeNumber}`)}
+                        style={{flex:1}}
+                        title={`Calculate fare for route ${routeDetails.routeNumber}`}
+                      >
+                        <i className="fas fa-calculator"></i> Fare Calculator
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}

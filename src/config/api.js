@@ -27,6 +27,8 @@ export const API_CONFIG = {
       stopsSearch: '/stops/search',
       calculateFare: '/calculate_fare',
       routes: '/routes',
+      routesSearch: '/routes/search',
+      routeDetails: '/routes',  // + '/{route_id}/details'
       journeyPlan: '/journey/plan'
     }
   },
