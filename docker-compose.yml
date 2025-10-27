@@ -1,0 +1,191 @@
+version: '3.8'
+
+# ==========================================
+# BMTC Bus Crowd Prediction System
+# Docker Compose Configuration
+# ==========================================
+
+services:
+  # ==========================================
+  # ML Backend Service (Flask APIs)
+  # ==========================================
+  ml-backend:
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+    container_name: bmtc-ml-backend
+    image: bmtc-ml-backend:latest
+    restart: unless-stopped
+    
+    # Port mappings
+    ports:
+      - "${PREDICT_API_PORT:-5000}:5000"  # Prediction API
+      - "${FARE_API_PORT:-5001}:5001"     # Fare API
+    
+    # Environment variables
+    environment:
+      - APP_ENV=${APP_ENV:-production}
+      - DEBUG=${DEBUG:-False}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      
+      # API Configuration
+      - PREDICT_API_HOST=0.0.0.0
+      - PREDICT_API_PORT=5000
+      - FARE_API_HOST=0.0.0.0
+      - FARE_API_PORT=5001
+      
+      # CORS Configuration
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
+      
+      # Model Configuration
+      - MODEL_VERSION=${MODEL_VERSION:-v3_final}
+      - MODEL_FILENAME=${MODEL_FILENAME:-crowd_prediction_model.pkl}
+      
+      # Rush Hour Configuration
+      - MORNING_RUSH_START=${MORNING_RUSH_START:-7}
+      - MORNING_RUSH_END=${MORNING_RUSH_END:-9}
+      - EVENING_RUSH_START=${EVENING_RUSH_START:-17}
+      - EVENING_RUSH_END=${EVENING_RUSH_END:-19}
+      
+      # Fare Configuration
+      - FARE_TIER1=${FARE_TIER1:-5.0}
+      - FARE_TIER2=${FARE_TIER2:-10.0}
+      - FARE_TIER3=${FARE_TIER3:-15.0}
+      - FARE_TIER4=${FARE_TIER4:-20.0}
+      - FARE_TIER5=${FARE_TIER5:-25.0}
+      - GST_RATE=${GST_RATE:-0.05}
+      
+      # Performance Settings
+      - BATCH_MAX_SIZE=${BATCH_MAX_SIZE:-100}
+      - PREDICTION_TIMEOUT=${PREDICTION_TIMEOUT:-5}
+      - CACHE_ENABLED=${CACHE_ENABLED:-True}
+      - CACHE_TIMEOUT=${CACHE_TIMEOUT:-300}
+    
+    # Volume mounts
+    volumes:
+      # Model files (persistent)
+      - ./ml/models:/app/models:rw
+      
+      # GTFS data (read-only for production)
+      - ./ml/dataset/gtfs:/app/dataset/gtfs:ro
+      
+      # Logs (persistent)
+      - ml-logs:/app/logs:rw
+      
+      # Output files
+      - ml-output:/app/output:rw
+      
+      # Configuration (optional - for hot reload in dev)
+      # - ./ml/config.py:/app/config.py:ro
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - bmtc-network
+
+  # ==========================================
+  # Frontend Service (React App)
+  # ==========================================
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - NODE_ENV=production
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5000}
+        - REACT_APP_FARE_API_URL=${REACT_APP_FARE_API_URL:-http://localhost:5001}
+    container_name: bmtc-frontend
+    image: bmtc-frontend:latest
+    restart: unless-stopped
+    
+    # Port mappings
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    
+    # Environment variables
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost:5000}
+      - REACT_APP_FARE_API_URL=${REACT_APP_FARE_API_URL:-http://localhost:5001}
+      - REACT_APP_GOOGLE_MAPS_API_KEY=${REACT_APP_GOOGLE_MAPS_API_KEY}
+    
+    # Dependencies
+    depends_on:
+      ml-backend:
+        condition: service_healthy
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "3"
+    
+    # Networks
+    networks:
+      - bmtc-network
+
+# ==========================================
+# Named Volumes
+# ==========================================
+volumes:
+  ml-logs:
+    driver: local
+    name: bmtc-ml-logs
+  
+  ml-output:
+    driver: local
+    name: bmtc-ml-output
+
+# ==========================================
+# Networks
+# ==========================================
+networks:
+  bmtc-network:
+    driver: bridge
+    name: bmtc-network
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16

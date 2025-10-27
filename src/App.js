@@ -15,6 +15,7 @@ import AdminDashboard from './components/AdminDashboard';
 import Feedback from './components/Feedback';
 import UserGuide from './components/UserGuide';
 import Helpline from './components/Helpline';
+import APITester from './components/APITester';
 import Footer from './components/Footer';
 import VoiceButton from './components/VoiceButton';
 import VoiceLanguageModal from './components/VoiceLanguageModal';
@@ -39,6 +40,7 @@ function App() {
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/user-guide" element={<UserGuide />} />
               <Route path="/helpline" element={<Helpline />} />
+              <Route path="/api-tester" element={<APITester />} />
             </Routes>
             <VoiceLanguageModal />
             <VoiceButton />
